@@ -17,8 +17,8 @@ import java.util.List;
 import java.util.ArrayList;
 
 
-@TeleOp(name = "JonyTest")
-public class JonyTest extends OpMode {
+@TeleOp(name = "Blue")
+public class Blue extends OpMode {
 
     DcMotor frontRightMotor, intakeMoter, backLeftMotor, backRightMotor, frontLeftMotor;
     DcMotorEx launch1, launch2, sorterMotor;
@@ -29,7 +29,7 @@ public class JonyTest extends OpMode {
 
     double redValue = 1, blueValue = 1, greenValue = 1, alphaValue = 1;
     boolean greenTrue = false, purpleTrue = false;
-    Pose2d currPos = new Pose2d(72,0 , 0);
+    Pose2d currPos = new Pose2d(9,0 , 0);
     //Ball Positions
     List<Integer> holderOne = new ArrayList<>(Arrays.asList(0,0)), holderTwo = new ArrayList<>(Arrays.asList(2,0)), holderThree = new ArrayList<>(Arrays.asList(4,0));
     //timer
@@ -38,7 +38,6 @@ public class JonyTest extends OpMode {
     double spinRate = 1.038 * distance + 204.24;
     double targetx = 127;
     double targety = 57;
-    double addTurn;
     PinpointDrive drive;
     boolean shootPos = false, rightBumberPreveous = false, leftBumperPreveous = false, sorterMoving = false, shoot = false;
 
@@ -86,13 +85,24 @@ public class JonyTest extends OpMode {
         // keep your original stick mapping
         double verticle = -gamepad1.left_stick_y; // forward/back
         double strafe = -gamepad1.left_stick_x;  // left/right
-        double turn = -gamepad1.right_stick_x + addTurn;   // rotation
+        double turn = -gamepad1.right_stick_x;   // rotation
 
         // motor power calc with left-side compensation
         double fRightPower = verticle + turn + strafe;
         double fLeftPower = (verticle - turn - strafe);
         double bRightPower = verticle + turn - strafe;
         double bLeftPower = (verticle - turn + strafe);
+
+        // normalize so no value exceeds ±1
+        double max = Math.max(1.0,
+                Math.max(Math.abs(fRightPower),
+                        Math.max(Math.abs(fLeftPower),
+                                Math.max(Math.abs(bRightPower), Math.abs(bLeftPower)))));
+
+        fRightPower /= max;
+        fLeftPower /= max;
+        bRightPower /= max;
+        bLeftPower /= max;
 
         // apply power
         frontRightMotor.setPower(fRightPower);
@@ -101,17 +111,7 @@ public class JonyTest extends OpMode {
         backLeftMotor.setPower(bLeftPower);
         rampAngle.setPosition(0.5);
 
-        double x = drive.getPinpoint().getPosX();
-        double y = drive.getPinpoint().getPosY();
-
-        double distance1 = targetx - x;
-        double distance2 = targety - y;
-
-        double heading = Math.atan2(distance2, -distance1);
-        telemetry.addData("actual angle", heading);
-        telemetry.addData("Heading", drive.getPose().heading.toDouble());
-
-        double distance = Math.sqrt((distance1 * distance1) + (distance2 * distance2));
+        distance = testPos();
 
         //Read color sensor value
         if (checkForBall() && !sorterMoving && !shootPos) {
@@ -154,19 +154,16 @@ public class JonyTest extends OpMode {
         if (gamepad2.right_trigger > 0) {
             spinRate = (1.038 * distance + 204.24); // convert deg/s → rad/s
             if (distance < 115) {
-                spinRate -= 10;
+                spinRate -= 20;
             } else {
-                spinRate += 10;
+                spinRate += 5;
+            }
+            if (launch2.getVelocity(AngleUnit.DEGREES) > spinRate-7) {
+                launchServo.setPosition(.55);
             }
 
             launch1.setVelocity(spinRate, AngleUnit.DEGREES);
             launch2.setVelocity(spinRate, AngleUnit.DEGREES);
-
-            if (drive.getPinpoint().getHeading() > heading +0.01) {
-                addTurn -= 0.3;
-            } else if (drive.getPinpoint().getHeading() < heading -0.01) {
-                addTurn += 0.3;
-            }
 
         } else if (gamepad2.left_trigger > 0) {
 
@@ -182,7 +179,7 @@ public class JonyTest extends OpMode {
         //----------------------
         //Launch Servo
 
-        if (gamepad2.y && shootPos) {
+        if (launch1.getVelocity(AngleUnit.DEGREES) > (spinRate-3d) || gamepad2.y) {
             launchServo.setPosition(.55);
             if (holderOne.get(0) == 2) {
                 holderOne.set(1,0);
@@ -215,7 +212,7 @@ public class JonyTest extends OpMode {
             locker.setPosition(0.61);
         }
         if (gamepad2.dpad_up) {
-            locker.setPosition(0.70);
+            autoShoot();
         }
 
         if (sorterMoving) {
@@ -248,10 +245,14 @@ public class JonyTest extends OpMode {
     //----------------------
 
     public void telemetry() {
+        telemetry.addData("Red: ", redValue);
+        telemetry.addData("Green: ", greenValue);
+        telemetry.addData("Blue: ", blueValue);
+        telemetry.addData("CheckForBall", checkForBall());
+        telemetry.addData("holderOne value: ", holderOne.get(1));
+        telemetry.addData("holderTwo value: ", holderTwo.get(1));
         telemetry.addData("Should Shoot: ", shoot);
         telemetry.addData("Shoot Velocity: ", launch2.getVelocity(AngleUnit.DEGREES));
-        telemetry.addData("Turn", addTurn);
-
 
         telemetry.update();
     }
@@ -319,7 +320,7 @@ public class JonyTest extends OpMode {
             sorterMotor.setPower(0);
             sorterMoving = false;
         }
-        if (currpos >= target_value-30 && currpos <= target_value+30) {
+        if (currpos >= target_value-35 && currpos <= target_value+35) {
             locker.setPosition(.61);
         }
     }
@@ -443,5 +444,17 @@ public class JonyTest extends OpMode {
         if (launch2.getVelocity(AngleUnit.RADIANS) > 600) {
             launchServo.setPosition(.55);
         }
+    }
+    public double testPos() {
+        Pose2d newPos = drive.getPose();
+        double x = newPos.position.x;
+        double y = newPos.position.y;
+
+        double distance1 = targetx - x;
+        double distance2 = targety - y;
+
+        double length = Math.sqrt((distance1 * distance1) + (distance2 * distance2));
+
+        return length;
     }
 }

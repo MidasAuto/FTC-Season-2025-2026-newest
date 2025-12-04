@@ -29,7 +29,7 @@ public class Jony extends OpMode {
 
     double redValue = 1, blueValue = 1, greenValue = 1, alphaValue = 1;
     boolean greenTrue = false, purpleTrue = false;
-    Pose2d currPos = new Pose2d(72,0 , 0);
+    Pose2d currPos = new Pose2d(9,0 , 0);
     //Ball Positions
     List<Integer> holderOne = new ArrayList<>(Arrays.asList(0,0)), holderTwo = new ArrayList<>(Arrays.asList(2,0)), holderThree = new ArrayList<>(Arrays.asList(4,0));
     //timer
@@ -58,24 +58,19 @@ public class Jony extends OpMode {
         //Color sensor
         checkColorSensor = hardwareMap.get(ColorSensor.class, "checkColorSensor");
 
-        // ORIGINAL: only frontLeft reversed
-        frontLeftMotor.setDirection(DcMotorEx.Direction.REVERSE);
-        backRightMotor.setDirection(DcMotorEx.Direction.REVERSE);
-        // backLeftMotor left as default (no reverse)
-
         // Brake so robot stops instead of coasting
         frontRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         sorterMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        // Use encoders like your original code
-        frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         launch2.setDirection(DcMotorSimple.Direction.REVERSE);
+
+
         ///sorterMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
         target_value = sorterMotor.getCurrentPosition();
@@ -88,9 +83,9 @@ public class Jony extends OpMode {
         boolean leftBumperCurrent = gamepad2.left_bumper;
         boolean rightBumperCurrent = gamepad2.right_bumper;
         // keep your original stick mapping
-        double verticle = gamepad1.left_stick_y; // forward/back
-        double strafe = gamepad1.left_stick_x;  // left/right
-        double turn = gamepad1.right_stick_x;   // rotation
+        double verticle = -gamepad1.left_stick_y; // forward/back
+        double strafe = -gamepad1.left_stick_x;  // left/right
+        double turn = -gamepad1.right_stick_x;   // rotation
 
         // motor power calc with left-side compensation
         double fRightPower = verticle + turn + strafe;
@@ -157,27 +152,34 @@ public class Jony extends OpMode {
         //----------------------
 
         if (gamepad2.right_trigger > 0) {
-            spinRate = 1.038*distance+204.24;
+            spinRate = (1.038 * distance + 204.24); // convert deg/s → rad/s
             if (distance < 115) {
-                spinRate -= 5;
-            }
-            else {
+                spinRate -= 20;
+            } else {
                 spinRate += 5;
             }
-            launch2.setVelocity(spinRate, AngleUnit.DEGREES);
+            if (launch2.getVelocity(AngleUnit.DEGREES) > spinRate-7) {
+                launchServo.setPosition(.55);
+            }
+
             launch1.setVelocity(spinRate, AngleUnit.DEGREES);
+            launch2.setVelocity(spinRate, AngleUnit.DEGREES);
+
         } else if (gamepad2.left_trigger > 0) {
-            launch2.setVelocity(-180, AngleUnit.RADIANS);
+
             launch1.setVelocity(-180, AngleUnit.DEGREES);
+            launch2.setVelocity(-180, AngleUnit.DEGREES);
+
         } else {
             launch1.setPower(0);
             launch2.setPower(0);
         }
 
+
         //----------------------
         //Launch Servo
 
-        if (gamepad2.y && shootPos) {
+        if (launch1.getVelocity(AngleUnit.DEGREES) > (spinRate-3d) || gamepad2.y) {
             launchServo.setPosition(.55);
             if (holderOne.get(0) == 2) {
                 holderOne.set(1,0);
@@ -207,14 +209,14 @@ public class Jony extends OpMode {
             target_value = autoMove(1, 3);
         }
         if (gamepad2.dpad_down) {
-            locker.setPosition(0.68);
+            locker.setPosition(0.61);
         }
         if (gamepad2.dpad_up) {
             autoShoot();
         }
 
         if (sorterMoving) {
-            locker.setPosition((0.78));
+            locker.setPosition((0.70));
             moveSorter();
         }
         if (gamepad1.dpad_up) {
@@ -315,9 +317,11 @@ public class Jony extends OpMode {
             }
         }
         else if (currpos >= target_value-7 && currpos <= target_value+7) {
-            locker.setPosition(.68);
             sorterMotor.setPower(0);
             sorterMoving = false;
+        }
+        if (currpos >= target_value-35 && currpos <= target_value+35) {
+            locker.setPosition(.61);
         }
     }
 
