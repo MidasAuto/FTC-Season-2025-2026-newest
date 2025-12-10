@@ -2,11 +2,13 @@ package org.firstinspires.ftc.teamcode.roadrunner.telOpmode;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 
 @TeleOp(name = "Noah")
+@Disabled
 public class Noah extends OpMode {
 
     DcMotor frontRightMotor;

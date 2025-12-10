@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 @Autonomous
 
 
-public class Auto1 extends LinearOpMode {
+public class AutoRed extends LinearOpMode {
 
     boolean intakeTest = false;
 
@@ -366,7 +366,7 @@ public class Auto1 extends LinearOpMode {
         Actions.runBlocking(
                 drive.actionBuilder(startPose)
                         .setTangent(Math.toRadians(0))
-                        .splineToLinearHeading(new Pose2d(9, 31, Math.toRadians(180)), Math.toRadians(180))
+                        .splineToLinearHeading(new Pose2d(0, 31, Math.toRadians(180)), Math.toRadians(180))
                         .build()
 
 

@@ -29,7 +29,7 @@ public class Blue extends OpMode {
 
     double redValue = 1, blueValue = 1, greenValue = 1, alphaValue = 1;
     boolean greenTrue = false, purpleTrue = false;
-    Pose2d currPos = new Pose2d(9,0 , 0);
+    Pose2d currPos = new Pose2d(9,-31 , 0);
     //Ball Positions
     List<Integer> holderOne = new ArrayList<>(Arrays.asList(0,0)), holderTwo = new ArrayList<>(Arrays.asList(2,0)), holderThree = new ArrayList<>(Arrays.asList(4,0));
     //timer
@@ -39,6 +39,7 @@ public class Blue extends OpMode {
     double targetx = 127;
     double targety = 57;
     PinpointDrive drive;
+    Pose2d relocate = new Pose2d(62.5, 9, 0);
     boolean shootPos = false, rightBumberPreveous = false, leftBumperPreveous = false, sorterMoving = false, shoot = false;
 
     @Override
@@ -156,7 +157,7 @@ public class Blue extends OpMode {
             if (distance < 115) {
                 spinRate -= 20;
             } else {
-                spinRate += 5;
+                spinRate += 7;
             }
             if (launch2.getVelocity(AngleUnit.DEGREES) > spinRate-7) {
                 launchServo.setPosition(.55);
@@ -177,6 +178,11 @@ public class Blue extends OpMode {
 
 
         //----------------------
+
+        if (gamepad1.dpad_left && gamepad1.right_trigger > 0.2) {
+            drive.pinpoint.setPosition(relocate);
+        }
+
         //Launch Servo
 
         if (launch1.getVelocity(AngleUnit.DEGREES) > (spinRate-3d) || gamepad2.y) {

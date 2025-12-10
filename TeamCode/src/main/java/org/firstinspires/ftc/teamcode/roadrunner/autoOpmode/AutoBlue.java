@@ -16,7 +16,6 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
-
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.internal.system.Deadline;
 import org.firstinspires.ftc.teamcode.roadrunner.PinpointDrive;
@@ -28,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 @Autonomous
 
 
-public class Auto1 extends LinearOpMode {
+public class AutoBlue extends LinearOpMode {
 
     boolean intakeTest = false;
 
@@ -346,7 +345,7 @@ public class Auto1 extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        Pose2d startPose = new Pose2d(9,24, Math.toRadians(180));
+        Pose2d startPose = new Pose2d(9,-24, Math.toRadians(180));
         PinpointDrive drive = new PinpointDrive(hardwareMap, startPose);
         Intake intake = new Intake(hardwareMap);
         IntakeStop intakeStop = new IntakeStop(hardwareMap);
@@ -366,7 +365,7 @@ public class Auto1 extends LinearOpMode {
         Actions.runBlocking(
                 drive.actionBuilder(startPose)
                         .setTangent(Math.toRadians(0))
-                        .splineToLinearHeading(new Pose2d(9, 31, Math.toRadians(180)), Math.toRadians(180))
+                        .splineToLinearHeading(new Pose2d(0, -31, Math.toRadians(180)), Math.toRadians(180))
                         .build()
 
 

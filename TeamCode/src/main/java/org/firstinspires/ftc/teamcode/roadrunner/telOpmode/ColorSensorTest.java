@@ -3,9 +3,11 @@ package org.firstinspires.ftc.teamcode.roadrunner.telOpmode;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.hardware.ColorSensor;
 
 @TeleOp(name = "colorSensorTest")
+@Disabled
 public class ColorSensorTest extends OpMode {
     private ColorSensor colorSensor;
     private double redValue = 1;
