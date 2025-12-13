@@ -29,6 +29,7 @@ public class Blue extends OpMode {
 
     double redValue = 1, blueValue = 1, greenValue = 1, alphaValue = 1;
     boolean greenTrue = false, purpleTrue = false;
+    ///Start position
     Pose2d currPos = new Pose2d(9,-31 , 0);
     //Ball Positions
     List<Integer> holderOne = new ArrayList<>(Arrays.asList(0,0)), holderTwo = new ArrayList<>(Arrays.asList(2,0)), holderThree = new ArrayList<>(Arrays.asList(4,0));
@@ -37,7 +38,7 @@ public class Blue extends OpMode {
     double distance = 49;
     double spinRate = 1.038 * distance + 204.24;
     double targetx = 127;
-    double targety = 57;
+    double targety = -27;
     PinpointDrive drive;
     Pose2d relocate = new Pose2d(62.5, 9, 0);
     boolean shootPos = false, rightBumberPreveous = false, leftBumperPreveous = false, sorterMoving = false, shoot = false;
@@ -152,13 +153,20 @@ public class Blue extends OpMode {
         //----------------------
         //628 radians is 6000 rpm for the 6000 rpm motor
         //----------------------
+        /// Spinrate Adjustment
 
         if (gamepad2.right_trigger > 0) {
             spinRate = (1.038 * distance + 204.24); // convert deg/s → rad/s
-            if (distance < 115) {
-                spinRate -= 20;
+            if (distance < 95) {
+
+                ///Change this for short distance
+
+                spinRate += 5;
             } else {
-                spinRate += 7;
+
+                ///Change this for long distance
+
+                spinRate += 5;
             }
             if (launch2.getVelocity(AngleUnit.DEGREES) > spinRate-7) {
                 launchServo.setPosition(.55);
@@ -260,6 +268,7 @@ public class Blue extends OpMode {
         telemetry.addData("holderTwo value: ", holderTwo.get(1));
         telemetry.addData("Should Shoot: ", shoot);
         telemetry.addData("Shoot Velocity: ", launch2.getVelocity(AngleUnit.DEGREES));
+        telemetry.addData("Distance", testPos());
 
         telemetry.update();
     }

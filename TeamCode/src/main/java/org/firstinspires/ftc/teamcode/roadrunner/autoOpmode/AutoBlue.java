@@ -77,28 +77,31 @@ public class AutoBlue extends LinearOpMode {
         Servo locker;
         ColorSensor colorSensor;
         ElapsedTime timer = new ElapsedTime();
-        double counter = 0;
-        boolean sorterMoving = false;
-
+        double counter = 0, target_value;
+        boolean sorterMoving = false, hasMoved = false;
         public Intake(HardwareMap hardwareMap) {
             intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
             sorterMotor = hardwareMap.get(DcMotor.class, "spedMotor");
             locker = hardwareMap.get(Servo.class, "locker");
             colorSensor= hardwareMap.get(ColorSensor.class, "colorSensor");
             timer.startTime();
-
+            target_value = sorterMotor.getCurrentPosition();
         }
 
         public class IntakeAction implements Action {
+
             public boolean run(@NonNull TelemetryPacket packet) {
 
-                double currpos = sorterMotor.getCurrentPosition(), target_value = sorterMotor.getCurrentPosition();
+                double currpos = sorterMotor.getCurrentPosition();
+                double GoTO;
 
                 intakeMotor.setPower(1);
+                locker.setPosition(0.61);
 
-                if (colorSensor.green() > 200) {
+                if (colorSensor.green() > 100 && !hasMoved) {
                     target_value += 180;
                     counter += 1;
+                    hasMoved = true;
                 }
 
                 if (currpos <= target_value-7 || currpos >= target_value+7) {
@@ -112,18 +115,25 @@ public class AutoBlue extends LinearOpMode {
                     sorterMotor.setPower(0);
                     sorterMoving = false;
                 }
-                if (currpos >= target_value-35 && currpos <= target_value+35) {
+                if (currpos >= target_value-7 && currpos <= target_value+7) {
                     locker.setPosition(.61);
+                    hasMoved = false;
+                } else {
+                    locker.setPosition(0.7);
+                    timer.reset();
                 }
 
-                timer.reset();
+                telemetry.addData("Color", colorSensor.green());
+                telemetry.addData("Counter", counter);
+                telemetry.addData("Target", target_value);
+                telemetry.addData("Currpos", currpos);
+                telemetry.addData("hasMoved", hasMoved);
+                telemetry.addData("Moving", sorterMoving);
+                telemetry.update();
 
-                if (counter == 3 && !sorterMoving) {
+                if (counter == 3 && !sorterMoving && !hasMoved) {
                     return false;
                 }
-
-
-
 
                 return true;
             }
@@ -206,16 +216,37 @@ public class AutoBlue extends LinearOpMode {
         double pattern;
         DcMotor sorterMotor;
         CheckColor checkColor;
+        private HuskyLens huskyLens;
 
         public SorterMove(HardwareMap hardwareMap) {
             sorterMotor = hardwareMap.get(DcMotor.class, "spedMotor");
             sorterMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+            huskyLens = hardwareMap.get(HuskyLens.class, "huskylens");
+            huskyLens.selectAlgorithm(HuskyLens.Algorithm.TAG_RECOGNITION);
         }
 
         public class SorterMoveAction implements Action {
             public boolean run(@NonNull TelemetryPacket packet) {
+                HuskyLens.Block[] blocks = huskyLens.blocks();
+                double tagID = 0;
 
                 double currPos = sorterMotor.getCurrentPosition(), greenPosNeed = 0;
+
+                for (int i = 0; i < blocks.length; i++) {
+                    telemetry.addData("Block", blocks[i].id);
+
+                    tagID = blocks[i].id;
+                }
+
+                if (tagID == 1) {
+                    pattern = 1;
+                } else if (tagID == 2) {
+                    pattern = 2;
+                } else if (tagID == 3) {
+                    pattern = 3;
+                } else {
+                    pattern = 0;
+                }
 
                 if (pattern == 1) {
                     greenPosNeed = 0;
@@ -272,7 +303,7 @@ public class AutoBlue extends LinearOpMode {
     public class Shoot {
         DcMotorEx launch1, launch2;
         DcMotor sorterMotor;
-        Servo launchServo;
+        Servo launchServo, locker;
         PinpointDrive drive;
         private HuskyLens huskyLens;
 
@@ -284,12 +315,14 @@ public class AutoBlue extends LinearOpMode {
             launch2.setDirection(DcMotorEx.Direction.REVERSE);
             huskyLens = hardwareMap.get(HuskyLens.class, "huskylens");
             launchServo = hardwareMap.get(Servo.class, "launchServo");
+            locker = hardwareMap.get(Servo.class, "locker");
             huskyLens.selectAlgorithm(HuskyLens.Algorithm.TAG_RECOGNITION);
         }
 
         public class ShootAction implements Action {
             public boolean run(@NonNull TelemetryPacket packet) {
                 HuskyLens.Block[] blocks = huskyLens.blocks();
+
                 double x = drive.getPose().position.x, y = drive.getPose().position.y, heading = drive.pinpoint.getHeading();
                 double targetx = 127, targety = 57, pattern, tagID = 0;
 
@@ -345,7 +378,7 @@ public class AutoBlue extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        Pose2d startPose = new Pose2d(9,-24, Math.toRadians(90));
+        Pose2d startPose = new Pose2d(-24,9, Math.toRadians(90));
         PinpointDrive drive = new PinpointDrive(hardwareMap, startPose);
         Intake intake = new Intake(hardwareMap);
         IntakeStop intakeStop = new IntakeStop(hardwareMap);
@@ -365,7 +398,9 @@ public class AutoBlue extends LinearOpMode {
         Actions.runBlocking(
                 drive.actionBuilder(startPose)
                         .setTangent(Math.toRadians(0))
-                        .splineToLinearHeading(new Pose2d(9, -31, Math.toRadians(180)), Math.toRadians(90))
+                        .splineToLinearHeading(new Pose2d(-31, 9, Math.toRadians(90)), Math.toRadians(90))
+                        .afterDisp(1, intake.intakeAction())
+                        .splineToLinearHeading(new Pose2d(41, 31, Math.toRadians(90)), Math.toRadians(90))
                         .build()
 
 
