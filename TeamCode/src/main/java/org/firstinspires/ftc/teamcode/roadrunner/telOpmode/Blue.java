@@ -93,8 +93,7 @@ public class Blue extends OpMode {
         double fLeftPower = (verticle - turn - strafe);
         double bRightPower = verticle + turn - strafe;
         double bLeftPower = (verticle - turn + strafe);
-
-        // normalize so no value exceeds ±1
+        /*
         double max = Math.max(1.0,
                 Math.max(Math.abs(fRightPower),
                         Math.max(Math.abs(fLeftPower),
@@ -104,6 +103,8 @@ public class Blue extends OpMode {
         fLeftPower /= max;
         bRightPower /= max;
         bLeftPower /= max;
+
+         */
 
         // apply power
         frontRightMotor.setPower(fRightPower);

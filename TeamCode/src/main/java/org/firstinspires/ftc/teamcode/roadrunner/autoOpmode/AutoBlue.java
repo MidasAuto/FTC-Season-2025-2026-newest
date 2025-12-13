@@ -345,7 +345,7 @@ public class AutoBlue extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        Pose2d startPose = new Pose2d(9,-24, Math.toRadians(180));
+        Pose2d startPose = new Pose2d(9,-24, Math.toRadians(90));
         PinpointDrive drive = new PinpointDrive(hardwareMap, startPose);
         Intake intake = new Intake(hardwareMap);
         IntakeStop intakeStop = new IntakeStop(hardwareMap);
@@ -365,7 +365,7 @@ public class AutoBlue extends LinearOpMode {
         Actions.runBlocking(
                 drive.actionBuilder(startPose)
                         .setTangent(Math.toRadians(0))
-                        .splineToLinearHeading(new Pose2d(0, -31, Math.toRadians(180)), Math.toRadians(180))
+                        .splineToLinearHeading(new Pose2d(9, -31, Math.toRadians(180)), Math.toRadians(90))
                         .build()
 
 
