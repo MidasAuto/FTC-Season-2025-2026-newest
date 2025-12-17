@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.PinpointEncoder;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.hardware.ColorSensor;
@@ -19,6 +20,9 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.internal.system.Deadline;
 import org.firstinspires.ftc.teamcode.roadrunner.PinpointDrive;
+import org.firstinspires.ftc.teamcode.roadrunner.extraCode.ShootAllThree;
+import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 public class AutoBlue extends LinearOpMode {
 
     boolean intakeTest = false;
-
+    double tag = 6;
     List<Integer> sorter = new ArrayList<>(Arrays.asList(0,0,0));
     // The order has list pos "0" as the first slot in the clockwise direction of the intake position, the intake in the lost pos is 2
     // this ignores half steps
@@ -41,11 +45,27 @@ public class AutoBlue extends LinearOpMode {
         ColorSensor checkColorSensor;
         double targetValue;
         boolean greenTrue, purpleTrue, ballThere = false, sorterMoving = false;
+        private HuskyLens huskyLens;
         public CheckColor(HardwareMap hardwareMap) {
             checkColorSensor = hardwareMap.get(ColorSensor.class, "checkColorSensor");
+            huskyLens = hardwareMap.get(HuskyLens.class, "huskylens");
+            huskyLens.selectAlgorithm(HuskyLens.Algorithm.TAG_RECOGNITION);
         }
 
         public void checkBall() {
+
+            HuskyLens.Block[] blocks = huskyLens.blocks();
+
+            double tagID = 0;
+
+            for (int i = 0; i < blocks.length; i++) {
+                telemetry.addData("Block", blocks[i].id);
+
+                tagID = blocks[i].id;
+            }
+
+            tag = tagID;
+
             double blueValue = checkColorSensor.blue();
             double greenValue = checkColorSensor.green();
             if (greenValue > 100) {
@@ -73,7 +93,7 @@ public class AutoBlue extends LinearOpMode {
 
     // Intake Start
     public class Intake {
-        DcMotor intakeMotor, sorterMotor;
+        DcMotor intakeMotor, sorterMotor, fR, fL, bR,bL;
         Servo locker;
         ColorSensor colorSensor;
         ElapsedTime timer = new ElapsedTime();
@@ -84,6 +104,10 @@ public class AutoBlue extends LinearOpMode {
             sorterMotor = hardwareMap.get(DcMotor.class, "spedMotor");
             locker = hardwareMap.get(Servo.class, "locker");
             colorSensor= hardwareMap.get(ColorSensor.class, "colorSensor");
+            fR = hardwareMap.get(DcMotor.class, "rightFront");
+            fL = hardwareMap.get(DcMotor.class, "leftFront");
+            bL = hardwareMap.get(DcMotor.class, "leftBack");
+            bR = hardwareMap.get(DcMotor.class, "rightBack");
             timer.startTime();
             target_value = sorterMotor.getCurrentPosition();
         }
@@ -122,6 +146,13 @@ public class AutoBlue extends LinearOpMode {
                     locker.setPosition(0.7);
                     timer.reset();
                 }
+                /*
+                bL.setPower(0.3);
+                bR.setPower(0.3);
+                fL.setPower(0.3);
+                fR.setPower(0.3);
+
+                 */
 
                 telemetry.addData("Color", colorSensor.green());
                 telemetry.addData("Counter", counter);
@@ -133,9 +164,16 @@ public class AutoBlue extends LinearOpMode {
 
                 if (counter == 3 && !sorterMoving && !hasMoved) {
                     return false;
-                }
+                } else {
+                    /*
+                    bL.setPower(0);
+                    bR.setPower(0);
+                    fL.setPower(0);
+                    fR.setPower(0);
 
-                return true;
+                     */
+                    return true;
+                }
             }
         }
 
@@ -147,24 +185,62 @@ public class AutoBlue extends LinearOpMode {
 
     // IntakeStop
 
-    public class IntakeStop {
-        DcMotor intakeMotor;
+    public class ShootStart {
+        DcMotorEx launch1, launch2;
+        Servo launch;
 
-        public IntakeStop(HardwareMap hardwareMap) {
-            intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
+
+        public ShootStart(HardwareMap hardwareMap) {
+            launch1 = hardwareMap.get(DcMotorEx.class, "launch1");
+            launch2 = hardwareMap.get(DcMotorEx.class, "launch2");
+            launch = hardwareMap.get(Servo.class, "launchServo");
         }
 
-        public class IntakeStopAction implements Action {
+        public class ShootStartAction implements Action {
             public boolean run(@NonNull TelemetryPacket packet) {
 
-                intakeMotor.setPower(0);
+                double vel = 265;
+
+                launch1.setVelocity(vel, AngleUnit.DEGREES);
+                launch2.setVelocity(vel, AngleUnit.DEGREES);
+
+                if (launch1.getVelocity(AngleUnit.DEGREES) > vel -3) {
+                    launch.setPosition(0.55);
+                } else {
+                    launch.setPosition(0.7);
+                }
+
 
                 return false;
             }
         }
 
-        public Action intakeStopAction(){
-            return new IntakeStopAction();
+        public Action shootStartAction(){
+            return new ShootStartAction();
+        }
+
+    }
+
+    public class ShootStop {
+        DcMotorEx launch1, launch2;
+
+        public ShootStop(HardwareMap hardwareMap) {
+            launch1 = hardwareMap.get(DcMotorEx.class, "launch1");
+            launch2 = hardwareMap.get(DcMotorEx.class, "launch2");
+        }
+
+        public class ShootStopAction implements Action {
+            public boolean run(@NonNull TelemetryPacket packet) {
+
+                launch1.setVelocity(0);
+                launch2.setVelocity(0);
+
+                return false;
+            }
+        }
+
+        public Action shootStopAction(){
+            return new ShootStopAction();
         }
 
     }
@@ -185,13 +261,15 @@ public class AutoBlue extends LinearOpMode {
             public boolean run(@NonNull TelemetryPacket packet) {
                 HuskyLens.Block[] blocks = huskyLens.blocks();
 
-                double tagID;
+                double tagID = 0;
 
                 for (int i = 0; i < blocks.length; i++) {
                     telemetry.addData("Block", blocks[i].id);
 
                     tagID = blocks[i].id;
                 }
+
+                tag = tagID;
 
 
 
@@ -302,71 +380,49 @@ public class AutoBlue extends LinearOpMode {
 
     public class Shoot {
         DcMotorEx launch1, launch2;
-        DcMotor sorterMotor;
-        Servo launchServo, locker;
+        DcMotorEx sorterMotor;
+        Servo launchServo, locker, ballgate;
+        ShootAllThree shootThree = new ShootAllThree();
         PinpointDrive drive;
-        private HuskyLens huskyLens;
 
         public Shoot(HardwareMap hardwareMap, PinpointDrive drive) {
             this.drive = drive;
             launch1 = hardwareMap.get(DcMotorEx.class, "launch1");
             launch2 = hardwareMap.get(DcMotorEx.class, "launch2");
-            sorterMotor = hardwareMap.get(DcMotor.class, "spedMotor");
+            sorterMotor = hardwareMap.get(DcMotorEx.class, "spedMotor");
             launch2.setDirection(DcMotorEx.Direction.REVERSE);
-            huskyLens = hardwareMap.get(HuskyLens.class, "huskylens");
             launchServo = hardwareMap.get(Servo.class, "launchServo");
             locker = hardwareMap.get(Servo.class, "locker");
-            huskyLens.selectAlgorithm(HuskyLens.Algorithm.TAG_RECOGNITION);
+            ballgate = hardwareMap.get(Servo.class, "ballGate");
+
         }
 
         public class ShootAction implements Action {
             public boolean run(@NonNull TelemetryPacket packet) {
-                HuskyLens.Block[] blocks = huskyLens.blocks();
+                double targetX = 127, targetY = 57;
+                double xDistance = targetX - drive.pinpoint.getPosX(), yDistance = targetY - drive.pinpoint.getPosX();
+                double distance = Math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
+                double spinRate = 1.038 * distance + 204.24;
 
-                double x = drive.getPose().position.x, y = drive.getPose().position.y, heading = drive.pinpoint.getHeading();
-                double targetx = 127, targety = 57, pattern, tagID = 0;
+                if (distance < 95) {
 
-                double distance1 = targetx - x, distance2 = targety - y;
-                double length = Math.sqrt((distance1 * distance1) + (distance2 * distance2));
-                double spinRate = (1.038 * length + 204.24);
+                    ///Change this for short distance
 
-                for (int i = 0; i < blocks.length; i++) {
-                    telemetry.addData("Block", blocks[i].id);
-
-                    tagID = blocks[i].id;
-                }
-
-                if (tagID == 1) {
-                    pattern = 1;
-                } else if (tagID == 2) {
-                    pattern = 2;
-                } else if (tagID == 3) {
-                    pattern = 3;
+                    spinRate += 15;
                 } else {
-                    pattern = 0;
+
+                    ///Change this for long distance
+
+                    spinRate += 3;
                 }
 
+                if (launch1.getVelocity() > 30) {
 
-
-
-                telemetry.addData("distance", length);
-                telemetry.addData("spinrate", spinRate);
-                telemetry.addData("PinpointX", x);
-                telemetry.addData("PinpointY", y);
-                telemetry.addData("current", launch1.getVelocity(AngleUnit.DEGREES));
-                telemetry.update();
-
-                launch1.setVelocity(spinRate, AngleUnit.DEGREES);
-                launch2.setVelocity(spinRate, AngleUnit.DEGREES);
-
-                if (launch1.getVelocity(AngleUnit.DEGREES) > (spinRate - 5)) {
-                    launchServo.setPosition(0.55);
-
-                    return false;
-                } else {
-                    launchServo.setPosition(0.7);
-                    return true;
                 }
+
+                shootThree.shootAllThree(launch1, launch2, launchServo, locker, spinRate, sorterMotor);
+
+                return false;
             }
         }
 
@@ -381,10 +437,11 @@ public class AutoBlue extends LinearOpMode {
         Pose2d startPose = new Pose2d(-24,9, Math.toRadians(90));
         PinpointDrive drive = new PinpointDrive(hardwareMap, startPose);
         Intake intake = new Intake(hardwareMap);
-        IntakeStop intakeStop = new IntakeStop(hardwareMap);
+        ShootStart shootStart = new ShootStart(hardwareMap);
+        ShootStop shootStop = new ShootStop(hardwareMap);
         SorterMove sorterMove = new SorterMove(hardwareMap);
         CheckColor checkColor = new CheckColor(hardwareMap);
-        Shoot shootStart = new Shoot(hardwareMap, drive);
+        Shoot noShoot = new Shoot(hardwareMap, drive);
 
 
         waitForStart();
@@ -401,9 +458,8 @@ public class AutoBlue extends LinearOpMode {
                         .splineToLinearHeading(new Pose2d(-31, 9, Math.toRadians(90)), Math.toRadians(90))
                         .afterDisp(1, intake.intakeAction())
                         .splineToLinearHeading(new Pose2d(41, 31, Math.toRadians(90)), Math.toRadians(90))
+                        .stopAndAdd(noShoot.shootAction())
                         .build()
-
-
         );
     }
 }

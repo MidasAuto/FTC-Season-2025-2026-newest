@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.roadrunner.PinpointDrive;
+import org.firstinspires.ftc.teamcode.roadrunner.extraCode.ShootAllThree;
 
 import java.util.Arrays;
 import java.util.List;
@@ -23,23 +24,26 @@ public class Red extends OpMode {
     DcMotor frontRightMotor, intakeMoter, backLeftMotor, backRightMotor, frontLeftMotor;
     DcMotorEx launch1, launch2, sorterMotor;
     ColorSensor checkColorSensor;
-    Servo launchServo, rampAngle, locker;
+    Servo launchServo, ballGate, locker, aimLight;
+
+    ShootAllThree shootThree = new ShootAllThree();
 
     //----------------------
 
     double redValue = 1, blueValue = 1, greenValue = 1, alphaValue = 1;
     boolean greenTrue = false, purpleTrue = false;
-    Pose2d currPos = new Pose2d(19,30.5 , 0);
+    /// Start position
+    Pose2d currPos = new Pose2d(0, 0, 90);
     //Ball Positions
-    List<Integer> holderOne = new ArrayList<>(Arrays.asList(0,0)), holderTwo = new ArrayList<>(Arrays.asList(2,0)), holderThree = new ArrayList<>(Arrays.asList(4,0));
+    List<Integer> holderOne = new ArrayList<>(Arrays.asList(0, 0)), holderTwo = new ArrayList<>(Arrays.asList(2, 0)), holderThree = new ArrayList<>(Arrays.asList(4, 0));
     //timer
     int target_value = 0;
     double distance = 49;
     double spinRate = 1.038 * distance + 204.24;
-    double targetx = 127;
-    double targety = -57;
+    double targetx = -42;
+    double targety = 103;
     PinpointDrive drive;
-    Pose2d relocate = new Pose2d(62.5, 9, 0);
+    Pose2d relocate = new Pose2d(20, 10, 0);
     boolean shootPos = false, rightBumberPreveous = false, leftBumperPreveous = false, sorterMoving = false, shoot = false;
 
     @Override
@@ -54,8 +58,9 @@ public class Red extends OpMode {
         launch2 = hardwareMap.get(DcMotorEx.class, "launch2");
         //servos
         launchServo = hardwareMap.get(Servo.class, "launchServo");
-        rampAngle = hardwareMap.get(Servo.class, "rampAngle");
+        ballGate = hardwareMap.get(Servo.class, "ballGate");
         locker = hardwareMap.get(Servo.class, "locker");
+        aimLight = hardwareMap.get(Servo.class, "aimLight");
         //Color sensor
         checkColorSensor = hardwareMap.get(ColorSensor.class, "checkColorSensor");
 
@@ -93,8 +98,7 @@ public class Red extends OpMode {
         double fLeftPower = (verticle - turn - strafe);
         double bRightPower = verticle + turn - strafe;
         double bLeftPower = (verticle - turn + strafe);
-
-        // normalize so no value exceeds ±1
+        /*
         double max = Math.max(1.0,
                 Math.max(Math.abs(fRightPower),
                         Math.max(Math.abs(fLeftPower),
@@ -105,19 +109,22 @@ public class Red extends OpMode {
         bRightPower /= max;
         bLeftPower /= max;
 
+         */
+
+
         // apply power
         frontRightMotor.setPower(fRightPower);
         frontLeftMotor.setPower(fLeftPower);
         backRightMotor.setPower(bRightPower);
         backLeftMotor.setPower(bLeftPower);
-        rampAngle.setPosition(0.5);
+        ballGate.setPosition(0.8);
 
         distance = testPos();
 
         //Read color sensor value
         if (checkForBall() && !sorterMoving && !shootPos) {
             checkColor();
-            target_value = autoMove(0,0);
+            target_value = autoMove(0, 0);
         }
 
         //----------------------
@@ -151,15 +158,24 @@ public class Red extends OpMode {
         //----------------------
         //628 radians is 6000 rpm for the 6000 rpm motor
         //----------------------
+        /// Spinrate Adjustment
 
         if (gamepad2.right_trigger > 0) {
+            ballGate.setPosition(0.8);
+            distance = testPos();
             spinRate = (1.038 * distance + 204.24); // convert deg/s → rad/s
-            if (distance < 115) {
-                spinRate -= 20;
+            if (distance < 95) {
+
+                ///Change this for short distance
+
+                spinRate += 10;
             } else {
-                spinRate += 7;
+
+                ///Change this for long distance
+
+                spinRate += 8;
             }
-            if (launch2.getVelocity(AngleUnit.DEGREES) > spinRate-7) {
+            if (launch2.getVelocity(AngleUnit.DEGREES) > spinRate - 7) {
                 launchServo.setPosition(.55);
             }
 
@@ -174,8 +190,14 @@ public class Red extends OpMode {
         } else {
             launch1.setPower(0);
             launch2.setPower(0);
+            ballGate.setPosition(1);
         }
 
+        /// Shoot all three balls in quick succsession
+
+        if (gamepad2.dpad_up && gamepad2.right_trigger > 0.1) {
+            shootThree.shootAllThree(launch1, launch2, launchServo, locker, spinRate, sorterMotor);
+        }
 
         //----------------------
 
@@ -185,16 +207,16 @@ public class Red extends OpMode {
 
         //Launch Servo
 
-        if (launch1.getVelocity(AngleUnit.DEGREES) > (spinRate-3d) || gamepad2.y) {
+        if (launch1.getVelocity(AngleUnit.DEGREES) > (spinRate - 3d) || gamepad2.y) {
             launchServo.setPosition(.55);
             if (holderOne.get(0) == 2) {
-                holderOne.set(1,0);
+                holderOne.set(1, 0);
             }
             if (holderTwo.get(0) == 2) {
-                holderTwo.set(1,0);
+                holderTwo.set(1, 0);
             }
             if (holderThree.get(0) == 2) {
-                holderThree.set(1,0);
+                holderThree.set(1, 0);
             }
         } else {
             launchServo.setPosition(.7);
@@ -217,9 +239,6 @@ public class Red extends OpMode {
         if (gamepad2.dpad_down) {
             locker.setPosition(0.61);
         }
-        if (gamepad2.dpad_up) {
-            autoShoot();
-        }
 
         if (sorterMoving) {
             locker.setPosition((0.70));
@@ -235,8 +254,8 @@ public class Red extends OpMode {
         telemetry.update();
         leftBumperPreveous = leftBumperCurrent;
         rightBumberPreveous = rightBumperCurrent;
+        light();
         checkPos();
-
     }
 
     //----------------------
@@ -244,21 +263,27 @@ public class Red extends OpMode {
     public void getColor() {
         redValue = checkColorSensor.red();
         blueValue = checkColorSensor.blue();
-        greenValue = checkColorSensor.green();
+        greenValue = checkColorSensor.green(
+
+        );
         alphaValue = checkColorSensor.alpha();
     }
 
     //----------------------
 
     public void telemetry() {
-        telemetry.addData("Red: ", redValue);
+        /*telemetry.addData("Red: ", redValue);
         telemetry.addData("Green: ", greenValue);
         telemetry.addData("Blue: ", blueValue);
         telemetry.addData("CheckForBall", checkForBall());
         telemetry.addData("holderOne value: ", holderOne.get(1));
         telemetry.addData("holderTwo value: ", holderTwo.get(1));
-        telemetry.addData("Should Shoot: ", shoot);
+        telemetry.addData("Should Shoot: ", shoot);*/
         telemetry.addData("Shoot Velocity: ", launch2.getVelocity(AngleUnit.DEGREES));
+        telemetry.addData("Distance", testPos());
+        telemetry.addData("SpinRate", spinRate);
+        telemetry.addData("x", drive.getPose().position.x);
+        telemetry.addData("y", drive.getPose().position.y);
 
         telemetry.update();
     }
@@ -280,19 +305,19 @@ public class Red extends OpMode {
         if (holderOne.get(0) == 0) {
             if (greenTrue && checkForBall()) {
                 holderOne.set(1, 1);
-            } else if(purpleTrue && checkForBall()){
+            } else if (purpleTrue && checkForBall()) {
                 holderOne.set(1, 2);
             }
         } else if (holderTwo.get(0) == 0) {
             if (greenTrue && checkForBall()) {
                 holderTwo.set(1, 1);
-            } else if (purpleTrue && checkForBall()){
+            } else if (purpleTrue && checkForBall()) {
                 holderTwo.set(1, 2);
             }
         } else if (holderThree.get(0) == 0) {
             if (greenTrue && checkForBall()) {
                 holderThree.set(1, 1);
-            } else if(purpleTrue && checkForBall()){
+            } else if (purpleTrue && checkForBall()) {
                 holderThree.set(1, 2);
             }
             greenTrue = false;
@@ -302,7 +327,8 @@ public class Red extends OpMode {
 
     //----------------------
 
-    public boolean checkForBall() {;
+    public boolean checkForBall() {
+        ;
         int blueV = checkColorSensor.blue();
 
 
@@ -314,19 +340,17 @@ public class Red extends OpMode {
     public void moveSorter() {
         double currpos = sorterMotor.getCurrentPosition();
 
-        if (currpos <= target_value-7 || currpos >= target_value+7) {
+        if (currpos <= target_value - 7 || currpos >= target_value + 7) {
             if (currpos < target_value) {
                 sorterMotor.setPower(.3);
-            }
-            else if (currpos > target_value) {
+            } else if (currpos > target_value) {
                 sorterMotor.setPower(-0.3);
             }
-        }
-        else if (currpos >= target_value-7 && currpos <= target_value+7) {
+        } else if (currpos >= target_value - 7 && currpos <= target_value + 7) {
             sorterMotor.setPower(0);
             sorterMoving = false;
         }
-        if (currpos >= target_value-35 && currpos <= target_value+35) {
+        if (currpos >= target_value - 35 && currpos <= target_value + 35) {
             locker.setPosition(.61);
         }
     }
@@ -335,7 +359,7 @@ public class Red extends OpMode {
 
     public void checkPos() {
         int currpos = sorterMotor.getCurrentPosition();
-        if (currpos <= target_value-7 || currpos >= target_value+7) {
+        if (currpos <= target_value - 7 || currpos >= target_value + 7) {
             sorterMoving = true;
         }
     }
@@ -349,20 +373,17 @@ public class Red extends OpMode {
 
         if (holderOne.get(0) > 5) {
             holderOne.set(0, 0);
-        }
-        else if (holderOne.get(0) < 0) {
+        } else if (holderOne.get(0) < 0) {
             holderOne.set(0, 5);
         }
         if (holderTwo.get(0) > 5) {
             holderTwo.set(0, 0);
-        }
-        else if (holderTwo.get(0) < 0) {
+        } else if (holderTwo.get(0) < 0) {
             holderTwo.set(0, 5);
         }
         if (holderThree.get(0) > 5) {
             holderThree.set(0, 0);
-        }
-        else if (holderThree.get(0) < 0) {
+        } else if (holderThree.get(0) < 0) {
             holderThree.set(0, 5);
         }
     }
@@ -378,20 +399,15 @@ public class Red extends OpMode {
         if (holderOne.get(1) == color) {
             if (hOnePos == 0) {
                 distance += target - hOnePos;
-            }
-            else if (hOnePos == 1) {
+            } else if (hOnePos == 1) {
                 distance += target - hOnePos;
-            }
-            else if (hOnePos == 2) {
+            } else if (hOnePos == 2) {
                 distance += target - hOnePos;
-            }
-            else if (hOnePos == 3) {
+            } else if (hOnePos == 3) {
                 distance += target - hOnePos;
-            }
-            else if (hOnePos == 4) {
+            } else if (hOnePos == 4) {
                 distance += target - hOnePos;
-            }
-            else if (hOnePos == 5) {
+            } else if (hOnePos == 5) {
                 distance += target - hOnePos;
             }
         }
@@ -401,20 +417,15 @@ public class Red extends OpMode {
         else if (holderTwo.get(1) == color) {
             if (hTwoPos == 0) {
                 distance += target - hTwoPos;
-            }
-            else if (hTwoPos == 1) {
+            } else if (hTwoPos == 1) {
                 distance += target - hTwoPos;
-            }
-            else if (hTwoPos == 2) {
+            } else if (hTwoPos == 2) {
                 distance += target - hTwoPos;
-            }
-            else if (hTwoPos == 3) {
+            } else if (hTwoPos == 3) {
                 distance += target - hTwoPos;
-            }
-            else if (hTwoPos == 4) {
+            } else if (hTwoPos == 4) {
                 distance += target - hTwoPos;
-            }
-            else if (hTwoPos == 5) {
+            } else if (hTwoPos == 5) {
                 distance += target - hTwoPos;
             }
         }
@@ -424,20 +435,15 @@ public class Red extends OpMode {
         else if (holderThree.get(1) == color) {
             if (hThreePos == 0) {
                 distance += target - hThreePos;
-            }
-            else if (hThreePos == 1) {
+            } else if (hThreePos == 1) {
                 distance += target - hThreePos;
-            }
-            else if (hThreePos == 2) {
+            } else if (hThreePos == 2) {
                 distance += target - hThreePos;
-            }
-            else if (hThreePos == 3) {
+            } else if (hThreePos == 3) {
                 distance += target - hThreePos;
-            }
-            else if (hThreePos == 4) {
+            } else if (hThreePos == 4) {
                 distance += target - hThreePos;
-            }
-            else if (hThreePos == 5) {
+            } else if (hThreePos == 5) {
                 distance += target - hThreePos;
             }
         }
@@ -445,12 +451,7 @@ public class Red extends OpMode {
         move_slots(distance);
         return 90 * distance;
     }
-    public void autoShoot() {
-        launch2.setVelocity(628 , AngleUnit.RADIANS);
-        if (launch2.getVelocity(AngleUnit.RADIANS) > 600) {
-            launchServo.setPosition(.55);
-        }
-    }
+
     public double testPos() {
         Pose2d newPos = drive.getPose();
         double x = newPos.position.x;
@@ -462,5 +463,24 @@ public class Red extends OpMode {
         double length = Math.sqrt((distance1 * distance1) + (distance2 * distance2));
 
         return length;
+    }
+    public void light() {
+        Pose2d newPos = drive.getPose();
+        double heading = Math.toDegrees(newPos.heading.toDouble()) - 180;
+        double x = newPos.position.x;
+        double y = newPos.position.y;
+
+        double distance1 = targetx - x;
+        double distance2 = targety - y;
+
+        double angleRad = Math.atan(distance2 / distance1);
+        double angleDeg = Math.toDegrees(angleRad);
+
+        if (angleDeg >= heading-3 && angleDeg <= heading+3) {
+            aimLight.setPosition(.5);
+        }
+        else {
+            aimLight.setPosition(.3);
+        }
     }
 }
