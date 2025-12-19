@@ -8,6 +8,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 public class ShootAllThree {
     int counter = 0;
     int targetValue = 0;
+    public static double velocity;
     ElapsedTime timer = new ElapsedTime();
 
 
@@ -15,6 +16,7 @@ public class ShootAllThree {
 
     public void shootAllThree(DcMotorEx launch1, DcMotorEx launch2, Servo launchServo, Servo locker, double spinRate, DcMotorEx sorterMotor) {
         while(true) {
+            velocity = launch1.getVelocity(AngleUnit.DEGREES);
             if (!partOne) {
                 launch1.setVelocity(spinRate, AngleUnit.DEGREES);
                 launch2.setVelocity(spinRate, AngleUnit.DEGREES);
@@ -74,7 +76,7 @@ public class ShootAllThree {
             if (!timerRunning) {
                 timer.reset();
             }
-            if (counter == 3) {
+            if (counter == 4) {
                 break;
             }
         }

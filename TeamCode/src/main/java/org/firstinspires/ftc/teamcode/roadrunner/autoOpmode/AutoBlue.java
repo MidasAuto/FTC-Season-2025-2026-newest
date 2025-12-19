@@ -122,8 +122,8 @@ public class AutoBlue extends LinearOpMode {
                 intakeMotor.setPower(1);
                 locker.setPosition(0.61);
 
-                if (colorSensor.green() > 100 && !hasMoved) {
-                    target_value += 180;
+                if (colorSensor.green() > 100 && !hasMoved && !sorterMoving && counter <= 3) {
+                    target_value += 178;
                     counter += 1;
                     hasMoved = true;
                 }
@@ -139,20 +139,18 @@ public class AutoBlue extends LinearOpMode {
                     sorterMotor.setPower(0);
                     sorterMoving = false;
                 }
-                if (currpos >= target_value-7 && currpos <= target_value+7) {
+                if (currpos >= target_value-35 && currpos <= target_value+35) {
                     locker.setPosition(.61);
                     hasMoved = false;
                 } else {
                     locker.setPosition(0.7);
                     timer.reset();
                 }
-                /*
-                bL.setPower(0.3);
-                bR.setPower(0.3);
-                fL.setPower(0.3);
-                fR.setPower(0.3);
 
-                 */
+                bL.setPower(0.2);
+                bR.setPower(0.2);
+                fL.setPower(0.2);
+                fR.setPower(0.2);
 
                 telemetry.addData("Color", colorSensor.green());
                 telemetry.addData("Counter", counter);
@@ -162,16 +160,14 @@ public class AutoBlue extends LinearOpMode {
                 telemetry.addData("Moving", sorterMoving);
                 telemetry.update();
 
-                if (counter == 3 && !sorterMoving && !hasMoved) {
+                if (counter >= 3 && !sorterMoving && !hasMoved && (timer.seconds() > 1)) {
                     return false;
                 } else {
-                    /*
+
                     bL.setPower(0);
                     bR.setPower(0);
                     fL.setPower(0);
                     fR.setPower(0);
-
-                     */
                     return true;
                 }
             }
@@ -384,6 +380,9 @@ public class AutoBlue extends LinearOpMode {
         Servo launchServo, locker, ballgate;
         ShootAllThree shootThree = new ShootAllThree();
         PinpointDrive drive;
+        ElapsedTime timer = new ElapsedTime();
+        double target_value;
+        boolean sorterMoving = false;
 
         public Shoot(HardwareMap hardwareMap, PinpointDrive drive) {
             this.drive = drive;
@@ -394,35 +393,47 @@ public class AutoBlue extends LinearOpMode {
             launchServo = hardwareMap.get(Servo.class, "launchServo");
             locker = hardwareMap.get(Servo.class, "locker");
             ballgate = hardwareMap.get(Servo.class, "ballGate");
-
+            target_value = sorterMotor.getCurrentPosition() + 90;
+            ballgate.setPosition(0.8);
         }
 
         public class ShootAction implements Action {
             public boolean run(@NonNull TelemetryPacket packet) {
-                double targetX = 127, targetY = 57;
+                double targetX = 127, targetY = 57, currpos = sorterMotor.getCurrentPosition();
                 double xDistance = targetX - drive.pinpoint.getPosX(), yDistance = targetY - drive.pinpoint.getPosX();
                 double distance = Math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
-                double spinRate = 1.038 * distance + 204.24;
-
-                if (distance < 95) {
-
-                    ///Change this for short distance
-
-                    spinRate += 15;
-                } else {
-
-                    ///Change this for long distance
-
-                    spinRate += 3;
-                }
+                double spinRate = 326;
 
                 if (launch1.getVelocity() > 30) {
 
                 }
 
-                shootThree.shootAllThree(launch1, launch2, launchServo, locker, spinRate, sorterMotor);
+                if (currpos <= target_value-7 || currpos >= target_value+7) {
+                    if (currpos < target_value) {
+                        sorterMotor.setPower(.3);
+                    } else if (currpos > target_value) {
+                        sorterMotor.setPower(-0.3);
+                    }
+                    sorterMoving = true;
+                } else if (currpos >= target_value-7 && currpos <= target_value+7) {
+                    sorterMotor.setPower(0);
+                    sorterMoving = false;
+                }
+                if (currpos >= target_value-35 && currpos <= target_value+35) {
+                    locker.setPosition(.61);
+                } else {
+                    locker.setPosition(0.7);
+                    timer.reset();
+                }
 
-                return false;
+                if (timer.seconds() > 1) {
+                    telemetry.addData("SpinRate: ", spinRate);
+                    telemetry.update();
+                    shootThree.shootAllThree(launch1, launch2, launchServo, locker, spinRate, sorterMotor);
+                    return false;
+                }
+
+                return true;
             }
         }
 
@@ -456,7 +467,7 @@ public class AutoBlue extends LinearOpMode {
                 drive.actionBuilder(startPose)
                         .setTangent(Math.toRadians(0))
                         .splineToLinearHeading(new Pose2d(-31, 9, Math.toRadians(90)), Math.toRadians(90))
-                        .afterDisp(1, intake.intakeAction())
+                        .stopAndAdd(intake.intakeAction())
                         .splineToLinearHeading(new Pose2d(41, 31, Math.toRadians(90)), Math.toRadians(90))
                         .stopAndAdd(noShoot.shootAction())
                         .build()
