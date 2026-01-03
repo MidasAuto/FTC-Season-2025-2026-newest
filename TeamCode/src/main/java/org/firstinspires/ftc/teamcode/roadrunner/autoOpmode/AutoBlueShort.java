@@ -22,6 +22,7 @@ import org.firstinspires.ftc.robotcore.internal.system.Deadline;
 import org.firstinspires.ftc.teamcode.roadrunner.PinpointDrive;
 import org.firstinspires.ftc.teamcode.roadrunner.extraCode.ShootAllThree;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
+import org.opencv.core.Mat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,10 +31,11 @@ import java.util.concurrent.TimeUnit;
 
 @Autonomous
 
-public class AutoBlue extends LinearOpMode {
+public class AutoBlueShort extends LinearOpMode {
 
-    boolean intakeTest = false, hasMoved = false, sorterMoving = false;
-    public static double tag = 6, target_value, spinnerRate;
+    boolean intakeTest = false, hasMoved = false, sorterMoving = false, shooter = false;
+    int counter = 0;
+    double tag = 6, target_value, spinRate;
     List<Integer> sorter = new ArrayList<>(Arrays.asList(0,0,0));
     // The order has list pos "0" as the first slot in the clockwise direction of the intake position, the intake in the lost pos is 2
     // this ignores half steps
@@ -42,19 +44,26 @@ public class AutoBlue extends LinearOpMode {
     /// This class detects color and sets the first position in the list
     public class CheckColor {
         ColorSensor checkColorSensor;
-        Servo locker;
+        Servo locker,launchServo, ballGate;
         DcMotor sorterMotor;
+        DcMotorEx launch1, launch2;
         double targetValue;
         boolean greenTrue, purpleTrue, ballThere = false;
         private HuskyLens huskyLens;
         ElapsedTime timer = new ElapsedTime();
+        boolean partOne = false, partTwo = false, firstTime = true, timerRunning = false;
         public CheckColor(HardwareMap hardwareMap) {
             sorterMotor = hardwareMap.get(DcMotor.class, "spedMotor");
             checkColorSensor = hardwareMap.get(ColorSensor.class, "checkColorSensor");
             huskyLens = hardwareMap.get(HuskyLens.class, "huskylens");
             locker = hardwareMap.get(Servo.class, "locker");
+            launchServo = hardwareMap.get(Servo.class, "launchServo");
+            ballGate = hardwareMap.get(Servo.class, "ballGate");
+            launch1 = hardwareMap.get(DcMotorEx.class, "launch1");
+            launch2 = hardwareMap.get(DcMotorEx.class, "launch2");
             timer.startTime();
             huskyLens.selectAlgorithm(HuskyLens.Algorithm.TAG_RECOGNITION);
+            ballGate.setPosition(1);
         }
 
         public void checkBall() {
@@ -90,7 +99,13 @@ public class AutoBlue extends LinearOpMode {
                 tagID = blocks[i].id;
             }
 
-            tag = tagID;
+            if (tagID == 1) {
+                tag = 1;
+            } if (tagID == 2) {
+                tag = 2;
+            } if (tagID == 4) {
+                tag = 3;
+            }
 
             double blueValue = checkColorSensor.blue();
             double greenValue = checkColorSensor.green();
@@ -111,6 +126,82 @@ public class AutoBlue extends LinearOpMode {
                 greenTrue = false;
                 purpleTrue = false;
             }
+
+            //---------------Shoot
+            if (shooter) {
+                if (!partOne) {
+                    ballGate.setPosition(.8);
+                    launch1.setVelocity(spinRate, AngleUnit.DEGREES);
+                    launch2.setVelocity(spinRate, AngleUnit.DEGREES);
+                    timerRunning = true;
+                /*if (timer.milliseconds() > 3000) {
+                    timerRunning = false;
+                    break;
+                }*/
+                    if (launch1.getVelocity(AngleUnit.DEGREES) > spinRate - 7) {
+                        launchServo.setPosition(.55);
+                        timerRunning = true;
+                        if (timer.milliseconds() > 500) {
+                            timerRunning = false;
+                            partOne = true;
+                            launchServo.setPosition(.7);
+                            ballGate.setPosition(1);
+                            counter++;
+                        }
+                    }
+                } else if (!partTwo) {
+                    if (firstTime) {
+                        timerRunning = true;
+                        if (timer.milliseconds() > 100) {
+                            firstTime = false;
+                            timerRunning = false;
+                            target_value += 180;
+                        }
+                    } else {
+                        if (sorterMotor.getCurrentPosition() <= target_value - 7 || sorterMotor.getCurrentPosition() >= target_value + 7) {
+                            locker.setPosition(.70);
+                            timerRunning = false;
+                            if (sorterMotor.getCurrentPosition() < target_value) {
+                                sorterMotor.setPower(0.3);
+                            } else if (sorterMotor.getCurrentPosition() > target_value) {
+                                sorterMotor.setPower(-0.3);
+                            }
+                        } else if (sorterMotor.getCurrentPosition() >= target_value - 7 && sorterMotor.getCurrentPosition() <= target_value + 7) {
+                            sorterMotor.setPower(0);
+                            timerRunning = true;
+                            if (timer.milliseconds() > 100) {
+                                timerRunning = false;
+                                partTwo = true;
+                            }
+
+                        }
+                        if (sorterMotor.getCurrentPosition() >= target_value - 35 && sorterMotor.getCurrentPosition() <= target_value + 35) {
+                            locker.setPosition(.61);
+                            ballGate.setPosition(.8);
+                        }
+                        if (partTwo) {
+                            partOne = false;
+                            partTwo = false;
+                            firstTime = true;
+                        }
+                    }
+                }
+                if (!timerRunning) {
+                    timer.reset();
+                }
+                if (counter >= 4) {
+                    target_value += 90;
+                    shooter = false;
+                }
+            }
+
+            telemetry.addData("Pos0", sorter.get(0));
+            telemetry.addData("Pos1", sorter.get(1));
+            telemetry.addData("Pos2", sorter.get(2));
+            telemetry.addData("Counter", counter);
+            telemetry.addData("Shooter:", shooter);
+            telemetry.addData("TagID:", tag);
+            telemetry.update();
         }
 
     }
@@ -153,10 +244,10 @@ public class AutoBlue extends LinearOpMode {
                     hasMoved = true;
                 }
 
-                bL.setPower(0.2);
-                bR.setPower(0.2);
-                fL.setPower(0.2);
-                fR.setPower(0.2);
+                bL.setPower(0.22);
+                bR.setPower(0.22);
+                fL.setPower(0.22);
+                fR.setPower(0.22);
 
                 telemetry.addData("Color", colorSensor.green());
                 telemetry.addData("Counter", counter);
@@ -167,6 +258,7 @@ public class AutoBlue extends LinearOpMode {
                 telemetry.update();
 
                 if (counter >= 3 && !sorterMoving && !hasMoved && (timer.seconds() > 1)) {
+                    target_value += 90;
                     return false;
                 } else {
 
@@ -251,23 +343,18 @@ public class AutoBlue extends LinearOpMode {
 
     public class Shift {
         DcMotor sorterMotor;
-        private HuskyLens huskyLens;
-
         public Shift(HardwareMap hardwareMap) {
             sorterMotor = hardwareMap.get(DcMotor.class, "spedMotor");
-            huskyLens = hardwareMap.get(HuskyLens.class, "huskylens");
-            huskyLens.selectAlgorithm(HuskyLens.Algorithm.TAG_RECOGNITION);
         }
 
         public class ShiftAction implements Action {
             public boolean run(@NonNull TelemetryPacket packet) {
 
-                if (tag == 0) {
-
+                if (tag == 2) {
+                    target_value += 180;
+                } else if (tag == 3) {
+                    target_value += 270;
                 }
-
-
-                sorterMotor.setPower(1);
 
                 return false;
             }
@@ -279,25 +366,14 @@ public class AutoBlue extends LinearOpMode {
 
     }
 
-    public void telemetry() {
-
-        telemetry.addData("Pos0", sorter.get(0));
-        telemetry.addData("Pos1", sorter.get(1));
-        telemetry.addData("Pos2", sorter.get(2));
-
-        telemetry.update();
-    }
-
     /// ShootAction
 
     public class Shoot {
         DcMotorEx launch1, launch2;
         DcMotorEx sorterMotor;
         Servo launchServo, locker, ballgate;
-        ShootAllThree shootThree = new ShootAllThree();
         PinpointDrive drive;
-        ElapsedTime timer = new ElapsedTime();
-        boolean shootMoveFRL = false;
+
 
         public Shoot(HardwareMap hardwareMap, PinpointDrive drive) {
             this.drive = drive;
@@ -309,6 +385,7 @@ public class AutoBlue extends LinearOpMode {
             locker = hardwareMap.get(Servo.class, "locker");
             ballgate = hardwareMap.get(Servo.class, "ballGate");
             ballgate.setPosition(0.8);
+
         }
 
         public class ShootAction implements Action {
@@ -316,27 +393,14 @@ public class AutoBlue extends LinearOpMode {
                 double targetX = 127, targetY = 57, currpos = sorterMotor.getCurrentPosition();
                 double xDistance = targetX - drive.pinpoint.getPosX(), yDistance = targetY - drive.pinpoint.getPosX();
                 double distance = Math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
-                double spinRate = 326;
-                spinnerRate = spinRate;
-
-                if (!shootMoveFRL) {
-                    target_value += 90;
-                    shootMoveFRL = true;
-                }
-
-                if (launch1.getVelocity() > 30) {
-
-                }
-
-                if (timer.seconds() > 1) {
-                    telemetry.addData("SpinRate: ", spinRate);
-                    telemetry.addData("Vel", ShootAllThree.velocity);
-                    telemetry.update();
-                    shootThree.shootAllThree(launch1, launch2, launchServo, locker, spinRate, sorterMotor);
+                spinRate = 326.0;
+                shooter = true;
+                if (counter >= 4) {
                     return false;
-                }
 
+                }
                 return true;
+
             }
         }
 
@@ -348,8 +412,14 @@ public class AutoBlue extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        Pose2d startPose = new Pose2d(-24,9, Math.toRadians(90));
+        /// Original -15.5
+        Pose2d startPose = new Pose2d(0,9, Math.toRadians(90));
+        Pose2d ballPos3 = new Pose2d(-35, 82.5, Math.toRadians(180));
+        Pose2d ballPos2 = new Pose2d(-35, 52.5, Math.toRadians(180));
+        Pose2d ballPos1 = new Pose2d(-35, 35.25, Math.toRadians(180));
+        Pose2d shootPos1 = new Pose2d(-12.5, 17, Math.toRadians(118));
         PinpointDrive drive = new PinpointDrive(hardwareMap, startPose);
+        Shift shift = new Shift(hardwareMap);
         Intake intake = new Intake(hardwareMap);
         ShootStart shootStart = new ShootStart(hardwareMap);
         ShootStop shootStop = new ShootStop(hardwareMap);
@@ -368,10 +438,17 @@ public class AutoBlue extends LinearOpMode {
         Actions.runBlocking(
                 drive.actionBuilder(startPose)
                         .setTangent(Math.toRadians(0))
-                        .splineToLinearHeading(new Pose2d(-10, 41, Math.toRadians(90)), Math.toRadians(90))
-                        .splineToLinearHeading(new Pose2d(-15, 56, Math.toRadians(180)), Math.toRadians(180))
+                        .splineToLinearHeading(new Pose2d(0, 25, Math.toRadians(90)), Math.toRadians(90))
+                        .stopAndAdd(shift.shiftAction())
+                        .splineToLinearHeading(shootPos1, Math.toRadians(118))
+                        .stopAndAdd(noShoot.shootAction())
+                        .splineToLinearHeading(ballPos1, Math.toRadians(180))
                         .stopAndAdd(intake.intakeAction())
-                        .splineToLinearHeading(new Pose2d(41, 31, Math.toRadians(90)), Math.toRadians(90))
+                        .splineToLinearHeading(shootPos1, Math.toRadians(118))
+                        .stopAndAdd(noShoot.shootAction())
+                        .splineToLinearHeading(ballPos2, Math.toRadians(180))
+                        .stopAndAdd(intake.intakeAction())
+                        .splineToLinearHeading(shootPos1, Math.toRadians(118))
                         .stopAndAdd(noShoot.shootAction())
                         .build()
         );

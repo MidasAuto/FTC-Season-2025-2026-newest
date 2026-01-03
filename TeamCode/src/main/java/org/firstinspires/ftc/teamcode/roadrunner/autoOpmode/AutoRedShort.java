@@ -22,7 +22,6 @@ import org.firstinspires.ftc.robotcore.internal.system.Deadline;
 import org.firstinspires.ftc.teamcode.roadrunner.PinpointDrive;
 import org.firstinspires.ftc.teamcode.roadrunner.extraCode.ShootAllThree;
 import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,10 +29,10 @@ import java.util.concurrent.TimeUnit;
 
 @Autonomous
 
-public class AutoBlue extends LinearOpMode {
+public class AutoRedShort extends LinearOpMode {
 
     boolean intakeTest = false, hasMoved = false, sorterMoving = false;
-    public static double tag = 6, target_value, spinnerRate;
+    double tag = 6, target_value;
     List<Integer> sorter = new ArrayList<>(Arrays.asList(0,0,0));
     // The order has list pos "0" as the first slot in the clockwise direction of the intake position, the intake in the lost pos is 2
     // this ignores half steps
@@ -297,7 +296,8 @@ public class AutoBlue extends LinearOpMode {
         ShootAllThree shootThree = new ShootAllThree();
         PinpointDrive drive;
         ElapsedTime timer = new ElapsedTime();
-        boolean shootMoveFRL = false;
+        boolean partOne = false, partTwo = false, firstTime = true, timerRunning = false;
+        int counter = 0;
 
         public Shoot(HardwareMap hardwareMap, PinpointDrive drive) {
             this.drive = drive;
@@ -309,6 +309,8 @@ public class AutoBlue extends LinearOpMode {
             locker = hardwareMap.get(Servo.class, "locker");
             ballgate = hardwareMap.get(Servo.class, "ballGate");
             ballgate.setPosition(0.8);
+
+
         }
 
         public class ShootAction implements Action {
@@ -316,27 +318,76 @@ public class AutoBlue extends LinearOpMode {
                 double targetX = 127, targetY = 57, currpos = sorterMotor.getCurrentPosition();
                 double xDistance = targetX - drive.pinpoint.getPosX(), yDistance = targetY - drive.pinpoint.getPosX();
                 double distance = Math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
-                double spinRate = 326;
-                spinnerRate = spinRate;
+                double spinRate = 326.0;
 
-                if (!shootMoveFRL) {
-                    target_value += 90;
-                    shootMoveFRL = true;
+
+                while(true) {
+                    if (!partOne) {
+                        launch1.setVelocity(spinRate, AngleUnit.DEGREES);
+                        launch2.setVelocity(spinRate, AngleUnit.DEGREES);
+                        timerRunning = true;
+                /*if (timer.milliseconds() > 3000) {
+                    timerRunning = false;
+                    break;
+                }*/
+                        if (launch1.getVelocity(AngleUnit.DEGREES) > spinRate-7) {
+                            launchServo.setPosition(.55);
+                            timerRunning = true;
+                            if (timer.milliseconds() > 500) {
+                                timerRunning = false;
+                                partOne = true;
+                                launchServo.setPosition(.7);
+                                counter++;
+                            }
+                        }
+                    }
+                    else if (!partTwo) {
+                        if (firstTime) {
+                            target_value = sorterMotor.getCurrentPosition() + 180;
+                            timerRunning = true;
+                            if (timer.milliseconds() > 100) {
+                                firstTime = false;
+                                timerRunning = false;
+                            }
+                        }
+                        else {
+                            if (sorterMotor.getCurrentPosition() <= target_value - 7 || sorterMotor.getCurrentPosition() >= target_value + 7) {
+                                locker.setPosition(.70);
+                                timerRunning = false;
+                                if (sorterMotor.getCurrentPosition() < target_value) {
+                                    sorterMotor.setPower(0.3);
+                                } else if (sorterMotor.getCurrentPosition() > target_value) {
+                                    sorterMotor.setPower(-0.3);
+                                }
+                            } else if (sorterMotor.getCurrentPosition() >= target_value - 7 && sorterMotor.getCurrentPosition() <= target_value + 7) {
+                                sorterMotor.setPower(0);
+                                timerRunning = true;
+                                if (timer.milliseconds() > 100) {
+                                    timerRunning = false;
+                                    partTwo = true;
+                                }
+
+                            }
+                            if (sorterMotor.getCurrentPosition() >= target_value - 35 && sorterMotor.getCurrentPosition() <= target_value + 35) {
+                                locker.setPosition(.61);
+                            }
+                            if (partTwo) {
+                                partOne = false;
+                                partTwo = false;
+                                firstTime = true;
+                            }
+                        }
+                    }
+                    if (!timerRunning) {
+                        timer.reset();
+                    }
+                    if (counter == 4) {
+                        break;
+                    }
                 }
 
-                if (launch1.getVelocity() > 30) {
 
-                }
-
-                if (timer.seconds() > 1) {
-                    telemetry.addData("SpinRate: ", spinRate);
-                    telemetry.addData("Vel", ShootAllThree.velocity);
-                    telemetry.update();
-                    shootThree.shootAllThree(launch1, launch2, launchServo, locker, spinRate, sorterMotor);
-                    return false;
-                }
-
-                return true;
+                return false;
             }
         }
 
@@ -348,7 +399,8 @@ public class AutoBlue extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        Pose2d startPose = new Pose2d(-24,9, Math.toRadians(90));
+        /// Original 15.5
+        Pose2d startPose = new Pose2d(11,9, Math.toRadians(90));
         PinpointDrive drive = new PinpointDrive(hardwareMap, startPose);
         Intake intake = new Intake(hardwareMap);
         ShootStart shootStart = new ShootStart(hardwareMap);
@@ -368,11 +420,9 @@ public class AutoBlue extends LinearOpMode {
         Actions.runBlocking(
                 drive.actionBuilder(startPose)
                         .setTangent(Math.toRadians(0))
-                        .splineToLinearHeading(new Pose2d(-10, 41, Math.toRadians(90)), Math.toRadians(90))
-                        .splineToLinearHeading(new Pose2d(-15, 56, Math.toRadians(180)), Math.toRadians(180))
-                        .stopAndAdd(intake.intakeAction())
-                        .splineToLinearHeading(new Pose2d(41, 31, Math.toRadians(90)), Math.toRadians(90))
+                        .splineToLinearHeading(new Pose2d(12.5, 17, Math.toRadians(62)), Math.toRadians(62))
                         .stopAndAdd(noShoot.shootAction())
+                        .splineToLinearHeading(new Pose2d(38, 9, Math.toRadians(90)), Math.toRadians(90))
                         .build()
         );
     }
