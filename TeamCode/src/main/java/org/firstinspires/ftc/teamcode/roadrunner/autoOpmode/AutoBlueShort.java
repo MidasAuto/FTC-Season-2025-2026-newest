@@ -4,13 +4,10 @@ import androidx.annotation.NonNull;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
-import com.acmerobotics.roadrunner.Vector2d;
-import com.acmerobotics.roadrunner.ftc.PinpointEncoder;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -18,16 +15,11 @@ import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.internal.system.Deadline;
 import org.firstinspires.ftc.teamcode.roadrunner.PinpointDrive;
-import org.firstinspires.ftc.teamcode.roadrunner.extraCode.ShootAllThree;
-import org.firstinspires.ftc.teamcode.roadrunner.MecanumDrive;
-import org.opencv.core.Mat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Autonomous
 
@@ -35,7 +27,7 @@ public class AutoBlueShort extends LinearOpMode {
 
     boolean intakeTest = false, hasMoved = false, sorterMoving = false, shooter = false;
     int counter = 0;
-    double tag = 6, target_value, spinRate;
+    double tag = 6, target_value, spinRate, counterColor = 0;
     List<Integer> sorter = new ArrayList<>(Arrays.asList(0,0,0));
     // The order has list pos "0" as the first slot in the clockwise direction of the intake position, the intake in the lost pos is 2
     // this ignores half steps
@@ -63,7 +55,6 @@ public class AutoBlueShort extends LinearOpMode {
             launch2 = hardwareMap.get(DcMotorEx.class, "launch2");
             timer.startTime();
             huskyLens.selectAlgorithm(HuskyLens.Algorithm.TAG_RECOGNITION);
-            ballGate.setPosition(1);
         }
 
         public void checkBall() {
@@ -130,14 +121,10 @@ public class AutoBlueShort extends LinearOpMode {
             //---------------Shoot
             if (shooter) {
                 if (!partOne) {
-                    ballGate.setPosition(.8);
                     launch1.setVelocity(spinRate, AngleUnit.DEGREES);
                     launch2.setVelocity(spinRate, AngleUnit.DEGREES);
                     timerRunning = true;
-                /*if (timer.milliseconds() > 3000) {
-                    timerRunning = false;
-                    break;
-                }*/
+
                     if (launch1.getVelocity(AngleUnit.DEGREES) > spinRate - 7) {
                         launchServo.setPosition(.55);
                         timerRunning = true;
@@ -145,7 +132,6 @@ public class AutoBlueShort extends LinearOpMode {
                             timerRunning = false;
                             partOne = true;
                             launchServo.setPosition(.7);
-                            ballGate.setPosition(1);
                             counter++;
                         }
                     }
@@ -177,8 +163,11 @@ public class AutoBlueShort extends LinearOpMode {
                         }
                         if (sorterMotor.getCurrentPosition() >= target_value - 35 && sorterMotor.getCurrentPosition() <= target_value + 35) {
                             locker.setPosition(.61);
-                            ballGate.setPosition(.8);
+
+                        } else {
+                            ballGate.setPosition(1);
                         }
+
                         if (partTwo) {
                             partOne = false;
                             partTwo = false;
@@ -194,13 +183,25 @@ public class AutoBlueShort extends LinearOpMode {
                     shooter = false;
                 }
             }
-
+            if (sorterMotor.getCurrentPosition() >= target_value - 14 && sorterMotor.getCurrentPosition() <= target_value + 14 && launch1.getVelocity() >= spinRate - 15) {
+                if (shooter) {
+                    ballGate.setPosition(0.8);
+                } else {
+                    ballGate.setPosition(1);
+                }
+            }
             telemetry.addData("Pos0", sorter.get(0));
             telemetry.addData("Pos1", sorter.get(1));
             telemetry.addData("Pos2", sorter.get(2));
             telemetry.addData("Counter", counter);
             telemetry.addData("Shooter:", shooter);
             telemetry.addData("TagID:", tag);
+            telemetry.addData("CounterColor", counterColor);
+            telemetry.addData("Target", target_value);
+            telemetry.addData("Currpos", currpos);
+            telemetry.addData("hasMoved", hasMoved);
+            telemetry.addData("Moving", sorterMoving);
+            telemetry.addData("BallGateCurrent", ballGate.getPosition());
             telemetry.update();
         }
 
@@ -214,7 +215,6 @@ public class AutoBlueShort extends LinearOpMode {
         Servo locker;
         ColorSensor colorSensor;
         ElapsedTime timer = new ElapsedTime();
-        double counter = 0;
         public Intake(HardwareMap hardwareMap) {
             intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
             sorterMotor = hardwareMap.get(DcMotor.class, "spedMotor");
@@ -232,15 +232,12 @@ public class AutoBlueShort extends LinearOpMode {
 
             public boolean run(@NonNull TelemetryPacket packet) {
 
-                double currpos = sorterMotor.getCurrentPosition();
-                double GoTO;
-
                 intakeMotor.setPower(1);
                 locker.setPosition(0.61);
 
-                if (colorSensor.green() > 100 && !hasMoved && !sorterMoving && counter <= 3) {
+                if (colorSensor.green() > 100 && !hasMoved && !sorterMoving && counterColor <= 3) {
                     target_value += 178;
-                    counter += 1;
+                    counterColor += 1;
                     hasMoved = true;
                 }
 
@@ -248,16 +245,9 @@ public class AutoBlueShort extends LinearOpMode {
                 bR.setPower(0.22);
                 fL.setPower(0.22);
                 fR.setPower(0.22);
-
-                telemetry.addData("Color", colorSensor.green());
-                telemetry.addData("Counter", counter);
-                telemetry.addData("Target", target_value);
-                telemetry.addData("Currpos", currpos);
-                telemetry.addData("hasMoved", hasMoved);
-                telemetry.addData("Moving", sorterMoving);
                 telemetry.update();
 
-                if (counter >= 3 && !sorterMoving && !hasMoved && (timer.seconds() > 1)) {
+                if (counterColor >= 3 && !sorterMoving && !hasMoved && (timer.seconds() > 1)) {
                     target_value += 90;
                     return false;
                 } else {
@@ -273,68 +263,6 @@ public class AutoBlueShort extends LinearOpMode {
 
         public Action intakeAction(){
             return new IntakeAction();
-        }
-
-    }
-
-    // IntakeStop
-
-    public class ShootStart {
-        DcMotorEx launch1, launch2;
-        Servo launch;
-
-
-        public ShootStart(HardwareMap hardwareMap) {
-            launch1 = hardwareMap.get(DcMotorEx.class, "launch1");
-            launch2 = hardwareMap.get(DcMotorEx.class, "launch2");
-            launch = hardwareMap.get(Servo.class, "launchServo");
-        }
-
-        public class ShootStartAction implements Action {
-            public boolean run(@NonNull TelemetryPacket packet) {
-
-                double vel = 265;
-
-                launch1.setVelocity(vel, AngleUnit.DEGREES);
-                launch2.setVelocity(vel, AngleUnit.DEGREES);
-
-                if (launch1.getVelocity(AngleUnit.DEGREES) > vel -3) {
-                    launch.setPosition(0.55);
-                } else {
-                    launch.setPosition(0.7);
-                }
-
-
-                return false;
-            }
-        }
-
-        public Action shootStartAction(){
-            return new ShootStartAction();
-        }
-
-    }
-
-    public class ShootStop {
-        DcMotorEx launch1, launch2;
-
-        public ShootStop(HardwareMap hardwareMap) {
-            launch1 = hardwareMap.get(DcMotorEx.class, "launch1");
-            launch2 = hardwareMap.get(DcMotorEx.class, "launch2");
-        }
-
-        public class ShootStopAction implements Action {
-            public boolean run(@NonNull TelemetryPacket packet) {
-
-                launch1.setVelocity(0);
-                launch2.setVelocity(0);
-
-                return false;
-            }
-        }
-
-        public Action shootStopAction(){
-            return new ShootStopAction();
         }
 
     }
@@ -384,11 +312,10 @@ public class AutoBlueShort extends LinearOpMode {
             launchServo = hardwareMap.get(Servo.class, "launchServo");
             locker = hardwareMap.get(Servo.class, "locker");
             ballgate = hardwareMap.get(Servo.class, "ballGate");
-            ballgate.setPosition(0.8);
 
         }
 
-        public class ShootAction implements Action {
+        public class ShootAction1 implements Action {
             public boolean run(@NonNull TelemetryPacket packet) {
                 double targetX = 127, targetY = 57, currpos = sorterMotor.getCurrentPosition();
                 double xDistance = targetX - drive.pinpoint.getPosX(), yDistance = targetY - drive.pinpoint.getPosX();
@@ -396,6 +323,9 @@ public class AutoBlueShort extends LinearOpMode {
                 spinRate = 326.0;
                 shooter = true;
                 if (counter >= 4) {
+                    shooter = false;
+                    counter = 0;
+                    //target_value += 90;
                     return false;
 
                 }
@@ -404,8 +334,31 @@ public class AutoBlueShort extends LinearOpMode {
             }
         }
 
-        public Action shootAction(){
-            return new ShootAction();
+        public class ShootAction2 implements Action {
+            public boolean run(@NonNull TelemetryPacket packet) {
+                double targetX = 127, targetY = 57, currpos = sorterMotor.getCurrentPosition();
+                double xDistance = targetX - drive.pinpoint.getPosX(), yDistance = targetY - drive.pinpoint.getPosX();
+                double distance = Math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
+                spinRate = 265;
+                shooter = true;
+                if (counter >= 4) {
+                    shooter = false;
+                    counter = 0;
+                    //target_value += 90;
+                    return false;
+
+                }
+                return true;
+
+            }
+        }
+
+        public Action shootAction1(){
+            return new ShootAction1();
+        }
+
+        public Action shootAction2(){
+            return new ShootAction2();
         }
 
     }
@@ -417,12 +370,11 @@ public class AutoBlueShort extends LinearOpMode {
         Pose2d ballPos3 = new Pose2d(-35, 82.5, Math.toRadians(180));
         Pose2d ballPos2 = new Pose2d(-35, 52.5, Math.toRadians(180));
         Pose2d ballPos1 = new Pose2d(-35, 35.25, Math.toRadians(180));
-        Pose2d shootPos1 = new Pose2d(-12.5, 17, Math.toRadians(118));
+        Pose2d shootPos2 = new Pose2d(-15, 94, Math.toRadians(135));
+        Pose2d shootPos1 = new Pose2d(-12.5, 17, Math.toRadians(113));
         PinpointDrive drive = new PinpointDrive(hardwareMap, startPose);
         Shift shift = new Shift(hardwareMap);
         Intake intake = new Intake(hardwareMap);
-        ShootStart shootStart = new ShootStart(hardwareMap);
-        ShootStop shootStop = new ShootStop(hardwareMap);
         CheckColor checkColor = new CheckColor(hardwareMap);
         Shoot noShoot = new Shoot(hardwareMap, drive);
 
@@ -440,16 +392,16 @@ public class AutoBlueShort extends LinearOpMode {
                         .setTangent(Math.toRadians(0))
                         .splineToLinearHeading(new Pose2d(0, 25, Math.toRadians(90)), Math.toRadians(90))
                         .stopAndAdd(shift.shiftAction())
-                        .splineToLinearHeading(shootPos1, Math.toRadians(118))
-                        .stopAndAdd(noShoot.shootAction())
+                        .splineToLinearHeading(shootPos1, Math.toRadians(113))
+                        .stopAndAdd(noShoot.shootAction1())
                         .splineToLinearHeading(ballPos1, Math.toRadians(180))
                         .stopAndAdd(intake.intakeAction())
-                        .splineToLinearHeading(shootPos1, Math.toRadians(118))
-                        .stopAndAdd(noShoot.shootAction())
+                        .splineToLinearHeading(shootPos2, Math.toRadians(135))
+                        .stopAndAdd(noShoot.shootAction2())
                         .splineToLinearHeading(ballPos2, Math.toRadians(180))
                         .stopAndAdd(intake.intakeAction())
-                        .splineToLinearHeading(shootPos1, Math.toRadians(118))
-                        .stopAndAdd(noShoot.shootAction())
+                        .splineToLinearHeading(shootPos2, Math.toRadians(135))
+                        .stopAndAdd(noShoot.shootAction2())
                         .build()
         );
     }

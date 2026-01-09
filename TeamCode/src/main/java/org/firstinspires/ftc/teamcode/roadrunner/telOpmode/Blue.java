@@ -284,6 +284,7 @@ public class Blue extends OpMode {
         telemetry.addData("SpinRate", spinRate);
         telemetry.addData("x", drive.getPose().position.x);
         telemetry.addData("y", drive.getPose().position.y);
+        telemetry.addData("Heading", Math.toDegrees(drive.pinpoint.getHeading()));
 
         telemetry.update();
     }

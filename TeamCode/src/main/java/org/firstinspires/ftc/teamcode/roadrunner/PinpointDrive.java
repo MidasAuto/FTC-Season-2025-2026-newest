@@ -1,11 +1,15 @@
 package org.firstinspires.ftc.teamcode.roadrunner;
 
 
+import static com.qualcomm.hardware.rev.RevHubOrientationOnRobot.zyxOrientation;
+
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.ftc.FlightRecorder;
 import com.acmerobotics.roadrunner.ftc.GoBildaPinpointDriver;
 import com.acmerobotics.roadrunner.ftc.GoBildaPinpointDriverRR;
+import com.acmerobotics.roadrunner.ftc.LazyImu;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -28,6 +32,7 @@ public class PinpointDrive extends MecanumDrive {
 
     public PinpointDrive(HardwareMap hardwareMap, Pose2d pose) {
         super(hardwareMap, pose);
+        lazyImu = new LazyImu(hardwareMap, "pinpoint", new RevHubOrientationOnRobot(zyxOrientation(0, 0, 0)),2);
         FlightRecorder.write("PINPOINT_PARAMS", PARAMS);
         pinpoint = hardwareMap.get(GoBildaPinpointDriverRR.class, "pinpoint");
 
