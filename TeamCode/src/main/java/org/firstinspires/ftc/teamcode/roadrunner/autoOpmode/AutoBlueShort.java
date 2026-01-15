@@ -26,8 +26,10 @@ import java.util.List;
 public class AutoBlueShort extends LinearOpMode {
 
     boolean intakeTest = false, hasMoved = false, sorterMoving = false, shooter = false;
+    public double XPOS, YPOS, XPOSDirect, YPOSDirect, encoderX, encoderY;
     int counter = 0;
     double tag = 6, target_value, spinRate, counterColor = 0;
+    Pose2d startPose = new Pose2d(-24,9, Math.toRadians(90));
     List<Integer> sorter = new ArrayList<>(Arrays.asList(0,0,0));
     // The order has list pos "0" as the first slot in the clockwise direction of the intake position, the intake in the lost pos is 2
     // this ignores half steps
@@ -190,6 +192,7 @@ public class AutoBlueShort extends LinearOpMode {
                     ballGate.setPosition(1);
                 }
             }
+
             telemetry.addData("Pos0", sorter.get(0));
             telemetry.addData("Pos1", sorter.get(1));
             telemetry.addData("Pos2", sorter.get(2));
@@ -202,6 +205,12 @@ public class AutoBlueShort extends LinearOpMode {
             telemetry.addData("hasMoved", hasMoved);
             telemetry.addData("Moving", sorterMoving);
             telemetry.addData("BallGateCurrent", ballGate.getPosition());
+            telemetry.addData("XPos", XPOS);
+            telemetry.addData("YPos", YPOS);
+            telemetry.addData("XPosDirect", XPOSDirect);
+            telemetry.addData("YPosDirect",YPOSDirect);
+            telemetry.addData("XPosActual", encoderX);
+            telemetry.addData("XPosActual", encoderY);
             telemetry.update();
         }
 
@@ -320,7 +329,7 @@ public class AutoBlueShort extends LinearOpMode {
                 double targetX = 127, targetY = 57, currpos = sorterMotor.getCurrentPosition();
                 double xDistance = targetX - drive.pinpoint.getPosX(), yDistance = targetY - drive.pinpoint.getPosX();
                 double distance = Math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
-                spinRate = 326.0;
+                spinRate = 252;
                 shooter = true;
                 if (counter >= 4) {
                     shooter = false;
@@ -339,7 +348,7 @@ public class AutoBlueShort extends LinearOpMode {
                 double targetX = 127, targetY = 57, currpos = sorterMotor.getCurrentPosition();
                 double xDistance = targetX - drive.pinpoint.getPosX(), yDistance = targetY - drive.pinpoint.getPosX();
                 double distance = Math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
-                spinRate = 265;
+                spinRate = 210;
                 shooter = true;
                 if (counter >= 4) {
                     shooter = false;
@@ -366,18 +375,18 @@ public class AutoBlueShort extends LinearOpMode {
     @Override
     public void runOpMode() {
         /// Original -15.5
-        Pose2d startPose = new Pose2d(0,9, Math.toRadians(90));
         Pose2d ballPos3 = new Pose2d(-35, 82.5, Math.toRadians(180));
         Pose2d ballPos2 = new Pose2d(-35, 52.5, Math.toRadians(180));
         Pose2d ballPos1 = new Pose2d(-35, 35.25, Math.toRadians(180));
         Pose2d shootPos2 = new Pose2d(-15, 94, Math.toRadians(135));
         Pose2d shootPos1 = new Pose2d(-12.5, 17, Math.toRadians(113));
         PinpointDrive drive = new PinpointDrive(hardwareMap, startPose);
+        drive.pinpoint.resetPosAndIMU();
+        drive.pinpoint.setPosition(startPose);
         Shift shift = new Shift(hardwareMap);
         Intake intake = new Intake(hardwareMap);
         CheckColor checkColor = new CheckColor(hardwareMap);
         Shoot noShoot = new Shoot(hardwareMap, drive);
-
 
         waitForStart();
         new Thread(() -> {
@@ -390,10 +399,10 @@ public class AutoBlueShort extends LinearOpMode {
         Actions.runBlocking(
                 drive.actionBuilder(startPose)
                         .setTangent(Math.toRadians(0))
-                        .splineToLinearHeading(new Pose2d(0, 25, Math.toRadians(90)), Math.toRadians(90))
+                        .splineToLinearHeading(new Pose2d(-24, 25, Math.toRadians(80)), Math.toRadians(80))
                         .stopAndAdd(shift.shiftAction())
-                        .splineToLinearHeading(shootPos1, Math.toRadians(113))
-                        .stopAndAdd(noShoot.shootAction1())
+                        .splineToLinearHeading(shootPos2, Math.toRadians(135))
+                        .stopAndAdd(noShoot.shootAction2())
                         .splineToLinearHeading(ballPos1, Math.toRadians(180))
                         .stopAndAdd(intake.intakeAction())
                         .splineToLinearHeading(shootPos2, Math.toRadians(135))

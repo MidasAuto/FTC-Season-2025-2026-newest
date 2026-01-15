@@ -28,7 +28,7 @@ import org.firstinspires.ftc.teamcode.roadrunner.messages.PoseMessage;
 public class PinpointDrive extends MecanumDrive {
     public static Params PARAMS = new Params();
     public GoBildaPinpointDriverRR pinpoint;
-    private Pose2d lastPinpointPose = pose;
+    private Pose2d lastPinpointPose;
 
     public PinpointDrive(HardwareMap hardwareMap, Pose2d pose) {
         super(hardwareMap, pose);
@@ -57,16 +57,24 @@ public class PinpointDrive extends MecanumDrive {
         */
         //pinpoint.recalibrateIMU();
         pinpoint.resetPosAndIMU();
+
+
         // wait for pinpoint to finish calibrating
         try {
-            Thread.sleep(300);
+            Thread.sleep(250);
+            pinpoint.update();
+            while (pinpoint.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.CALIBRATING) {
+                Thread.sleep(50);
+                pinpoint.update();
+            }
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
 
 
         pinpoint.setPosition(pose);
-
+        pinpoint.update();
+        lastPinpointPose = pose;
     }
 
     @Override

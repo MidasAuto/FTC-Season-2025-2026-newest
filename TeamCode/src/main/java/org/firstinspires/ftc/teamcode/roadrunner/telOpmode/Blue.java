@@ -32,14 +32,16 @@ public class Blue extends OpMode {
 
     double redValue = 1, blueValue = 1, greenValue = 1, alphaValue = 1;
     boolean greenTrue = false, purpleTrue = false;
+    boolean reset = false;
     /// Start position
-    Pose2d currPos = new Pose2d(0, 0, 90);
+    Pose2d currPos = new Pose2d(0, 0, Math.toRadians(90));
+    ElapsedTime loopTimer = new ElapsedTime();
     //Ball Positions
     List<Integer> holderOne = new ArrayList<>(Arrays.asList(0, 0)), holderTwo = new ArrayList<>(Arrays.asList(2, 0)), holderThree = new ArrayList<>(Arrays.asList(4, 0));
     //timer
     int target_value = 0;
     double distance = 49;
-    double spinRate = 1.038 * distance + 204.24;
+    double spinRate = 300;
     double targetx = -64;
     double targety = 96;
     PinpointDrive drive;
@@ -86,14 +88,15 @@ public class Blue extends OpMode {
 
     @Override
     public void loop() {
+        loopTimer.reset();
+        drive.getPinpoint().update();
         boolean leftBumperCurrent = gamepad2.left_bumper;
         boolean rightBumperCurrent = gamepad2.right_bumper;
-        // keep your original stick mapping
+
         double verticle = -gamepad1.left_stick_y; // forward/back
         double strafe = -gamepad1.left_stick_x;  // left/right
         double turn = -gamepad1.right_stick_x;   // rotation
 
-        // motor power calc with left-side compensation
         double fRightPower = verticle + turn + strafe;
         double fLeftPower = (verticle - turn - strafe);
         double bRightPower = verticle + turn - strafe;
@@ -111,7 +114,6 @@ public class Blue extends OpMode {
 
          */
 
-
         // apply power
         frontRightMotor.setPower(fRightPower);
         frontLeftMotor.setPower(fLeftPower);
@@ -124,7 +126,6 @@ public class Blue extends OpMode {
         //Read color sensor value
         if (checkForBall() && !sorterMoving && !shootPos) {
             checkColor();
-            target_value = autoMove(0, 0);
         }
 
         //----------------------
@@ -163,17 +164,12 @@ public class Blue extends OpMode {
         if (gamepad2.right_trigger > 0) {
             ballGate.setPosition(0.8);
             distance = testPos();
-            spinRate = (1.038 * distance + 204.24); // convert deg/s → rad/s
-            if (distance < 95) {
-
-                ///Change this for short distance
-
-                spinRate += 10;
-            } else {
+            spinRate = (0.748 * distance + 159.87); // convert deg/s → rad/s
+            if (distance > 95) {
 
                 ///Change this for long distance
 
-                spinRate += 8;
+                spinRate += 6;
             }
             if (launch2.getVelocity(AngleUnit.DEGREES) > spinRate - 7) {
                 launchServo.setPosition(.55);
@@ -224,18 +220,13 @@ public class Blue extends OpMode {
 
         //----------------------
 
-        if (gamepad2.dpad_right) {
+        if (gamepad2.dpad_right || gamepad1.dpad_left) {
             target_value += 3;
         }
-        if (gamepad2.dpad_left) {
+        if (gamepad2.dpad_left || gamepad1.dpad_left) {
             target_value -= 3;
         }
-        if (gamepad1.right_bumper) {
-            target_value = autoMove(2, 3);
-        }
-        if (gamepad1.left_bumper) {
-            target_value = autoMove(1, 3);
-        }
+
         if (gamepad2.dpad_down) {
             locker.setPosition(0.61);
         }
@@ -256,6 +247,8 @@ public class Blue extends OpMode {
         rightBumberPreveous = rightBumperCurrent;
         light();
         checkPos();
+        telemetry.addData("LoopTime", loopTimer);
+        telemetry.update();
     }
 
     //----------------------
@@ -282,8 +275,8 @@ public class Blue extends OpMode {
         telemetry.addData("Shoot Velocity: ", launch2.getVelocity(AngleUnit.DEGREES));
         telemetry.addData("Distance", testPos());
         telemetry.addData("SpinRate", spinRate);
-        telemetry.addData("x", drive.getPose().position.x);
-        telemetry.addData("y", drive.getPose().position.y);
+        telemetry.addData("x", drive.getPinpoint().getPosX());
+        telemetry.addData("y", drive.getPinpoint().getPosY());
         telemetry.addData("Heading", Math.toDegrees(drive.pinpoint.getHeading()));
 
         telemetry.update();
@@ -390,68 +383,6 @@ public class Blue extends OpMode {
     }
 
     //----------------------
-
-    public int autoMove(int color, int target) {
-        int distance = 0;
-        int hOnePos = holderOne.get(0);
-        int hTwoPos = holderTwo.get(0);
-        int hThreePos = holderThree.get(0);
-
-        if (holderOne.get(1) == color) {
-            if (hOnePos == 0) {
-                distance += target - hOnePos;
-            } else if (hOnePos == 1) {
-                distance += target - hOnePos;
-            } else if (hOnePos == 2) {
-                distance += target - hOnePos;
-            } else if (hOnePos == 3) {
-                distance += target - hOnePos;
-            } else if (hOnePos == 4) {
-                distance += target - hOnePos;
-            } else if (hOnePos == 5) {
-                distance += target - hOnePos;
-            }
-        }
-
-        //----------------------
-
-        else if (holderTwo.get(1) == color) {
-            if (hTwoPos == 0) {
-                distance += target - hTwoPos;
-            } else if (hTwoPos == 1) {
-                distance += target - hTwoPos;
-            } else if (hTwoPos == 2) {
-                distance += target - hTwoPos;
-            } else if (hTwoPos == 3) {
-                distance += target - hTwoPos;
-            } else if (hTwoPos == 4) {
-                distance += target - hTwoPos;
-            } else if (hTwoPos == 5) {
-                distance += target - hTwoPos;
-            }
-        }
-
-        //----------------------
-
-        else if (holderThree.get(1) == color) {
-            if (hThreePos == 0) {
-                distance += target - hThreePos;
-            } else if (hThreePos == 1) {
-                distance += target - hThreePos;
-            } else if (hThreePos == 2) {
-                distance += target - hThreePos;
-            } else if (hThreePos == 3) {
-                distance += target - hThreePos;
-            } else if (hThreePos == 4) {
-                distance += target - hThreePos;
-            } else if (hThreePos == 5) {
-                distance += target - hThreePos;
-            }
-        }
-
-        move_slots(distance);
-        return 90 * distance;
-    }
 
     public double testPos() {
         Pose2d newPos = drive.getPose();
