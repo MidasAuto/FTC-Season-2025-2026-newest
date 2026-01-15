@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.roadrunner.telOpmode;
 
 import com.acmerobotics.roadrunner.Pose2d;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -16,7 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
 
-
+@Disabled
 @TeleOp(name = "JonyTest")
 public class JonyTest extends OpMode {
 

@@ -6,6 +6,7 @@ import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.ftc.PinpointEncoder;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -26,7 +27,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Autonomous
-
+@Disabled
 
 public class AutoRed extends LinearOpMode {
 

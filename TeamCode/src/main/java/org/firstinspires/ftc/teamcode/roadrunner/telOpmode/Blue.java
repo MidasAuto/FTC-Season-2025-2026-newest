@@ -33,13 +33,19 @@ public class Blue extends OpMode {
     double redValue = 1, blueValue = 1, greenValue = 1, alphaValue = 1;
     boolean greenTrue = false, purpleTrue = false;
     /// Start position
-    Pose2d currPos = new Pose2d(0, 0, 90);
+    Pose2d currPos = new Pose2d(0, 0, Math.toRadians(90));
     //Ball Positions
     List<Integer> holderOne = new ArrayList<>(Arrays.asList(0, 0)), holderTwo = new ArrayList<>(Arrays.asList(2, 0)), holderThree = new ArrayList<>(Arrays.asList(4, 0));
     //timer
     int target_value = 0;
     double distance = 49;
-    double spinRate = 1.038 * distance + 204.24;
+    double spinRate = 0;
+
+    // These values control the automatic shooter speed calculation.
+    // Adjust them here to fine-tune the shooter.
+    double spinRateMultiplier = 1.0;
+    double spinRateConstant = 135;
+
     double targetx = -64;
     double targety = 96;
     PinpointDrive drive;
@@ -88,29 +94,36 @@ public class Blue extends OpMode {
     public void loop() {
         boolean leftBumperCurrent = gamepad2.left_bumper;
         boolean rightBumperCurrent = gamepad2.right_bumper;
-        // keep your original stick mapping
-        double verticle = -gamepad1.left_stick_y; // forward/back
-        double strafe = -gamepad1.left_stick_x;  // left/right
-        double turn = -gamepad1.right_stick_x;   // rotation
 
-        // motor power calc with left-side compensation
+        // Drive controls
+        double verticle;
+        double strafe;
+        double turn = -gamepad1.right_stick_x; // Rotation is always from the stick
+
+        // Use D-pad for fine-tuning (nudge)
+        if (gamepad1.dpad_up) {
+            verticle = 0.4; // Slow forward
+            strafe = 0;
+        } else if (gamepad1.dpad_down) {
+            verticle = -0.4; // Slow backward
+            strafe = 0;
+        } else if (gamepad1.dpad_right) {
+            strafe = -0.4; // Slow strafe right
+            verticle = 0;
+        } else if (gamepad1.dpad_left) {
+            strafe = 0.4; // Slow strafe left
+            verticle = 0;
+        } else {
+            // Default to analog stick control if D-pad is not pressed
+            verticle = -gamepad1.left_stick_y;
+            strafe = -gamepad1.left_stick_x;
+        }
+
+        // motor power calc
         double fRightPower = verticle + turn + strafe;
         double fLeftPower = (verticle - turn - strafe);
         double bRightPower = verticle + turn - strafe;
         double bLeftPower = (verticle - turn + strafe);
-        /*
-        double max = Math.max(1.0,
-                Math.max(Math.abs(fRightPower),
-                        Math.max(Math.abs(fLeftPower),
-                                Math.max(Math.abs(bRightPower), Math.abs(bLeftPower)))));
-
-        fRightPower /= max;
-        fLeftPower /= max;
-        bRightPower /= max;
-        bLeftPower /= max;
-
-         */
-
 
         // apply power
         frontRightMotor.setPower(fRightPower);
@@ -158,68 +171,51 @@ public class Blue extends OpMode {
         //----------------------
         //628 radians is 6000 rpm for the 6000 rpm motor
         //----------------------
-        /// Spinrate Adjustment
+        /// Spinrate Adjustment and Kicker Logic
 
-        if (gamepad2.right_trigger > 0) {
+        // Manual kicker override
+        if (gamepad2.y) {
+            launchServo.setPosition(0.55);
+        }
+        // Automatic shooting logic when right trigger is pressed
+        else if (gamepad2.right_trigger > 0) {
             ballGate.setPosition(0.8);
             distance = testPos();
-            spinRate = (1.038 * distance + 204.24); // convert deg/s → rad/s
-            if (distance < 95) {
+            spinRate = (spinRateMultiplier * distance + spinRateConstant);
 
-                ///Change this for short distance
-
-                spinRate += 10;
-            } else {
-
-                ///Change this for long distance
-
-                spinRate += 8;
-            }
-            if (launch2.getVelocity(AngleUnit.DEGREES) > spinRate - 7) {
-                launchServo.setPosition(.55);
-            }
-
+            // Set motor velocity
             launch1.setVelocity(spinRate, AngleUnit.DEGREES);
             launch2.setVelocity(spinRate, AngleUnit.DEGREES);
 
-        } else if (gamepad2.left_trigger > 0) {
-
+            // Wait until motors are at speed to activate kicker
+            if (launch1.getVelocity(AngleUnit.DEGREES) >= spinRate - 7) {
+                launchServo.setPosition(0.55); // Activate kicker
+                // Update ball holders since we are shooting
+                if (holderOne.get(0) == 2) { holderOne.set(1, 0); }
+                if (holderTwo.get(0) == 2) { holderTwo.set(1, 0); }
+                if (holderThree.get(0) == 2) { holderThree.set(1, 0); }
+            } else {
+                launchServo.setPosition(0.7); // Keep kicker retracted while spinning up
+            }
+        }
+        // Reverse shooter wheels
+        else if (gamepad2.left_trigger > 0) {
             launch1.setVelocity(-180, AngleUnit.DEGREES);
             launch2.setVelocity(-180, AngleUnit.DEGREES);
-
-        } else {
+            launchServo.setPosition(0.7); // Retract kicker
+        }
+        // Default state: motors off, kicker retracted
+        else {
             launch1.setPower(0);
             launch2.setPower(0);
             ballGate.setPosition(1);
+            launchServo.setPosition(0.7); // Retract kicker
         }
 
         /// Shoot all three balls in quick succsession
 
         if (gamepad2.dpad_up && gamepad2.right_trigger > 0.1) {
             shootThree.shootAllThree(launch1, launch2, launchServo, locker, spinRate, sorterMotor);
-        }
-
-        //----------------------
-
-        if (gamepad1.dpad_left && gamepad1.right_trigger > 0.2) {
-            drive.pinpoint.setPosition(relocate);
-        }
-
-        //Launch Servo
-
-        if (launch1.getVelocity(AngleUnit.DEGREES) > (spinRate - 3d) || gamepad2.y) {
-            launchServo.setPosition(.55);
-            if (holderOne.get(0) == 2) {
-                holderOne.set(1, 0);
-            }
-            if (holderTwo.get(0) == 2) {
-                holderTwo.set(1, 0);
-            }
-            if (holderThree.get(0) == 2) {
-                holderThree.set(1, 0);
-            }
-        } else {
-            launchServo.setPosition(.7);
         }
 
         //----------------------
@@ -243,11 +239,6 @@ public class Blue extends OpMode {
         if (sorterMoving) {
             locker.setPosition((0.70));
             moveSorter();
-        }
-        if (gamepad1.dpad_up) {
-            spinRate += 2;
-        } else if (gamepad1.dpad_down) {
-            spinRate -= 2;
         }
 
         telemetry();
@@ -317,7 +308,7 @@ public class Blue extends OpMode {
             }
         } else if (holderThree.get(0) == 0) {
             if (greenTrue && checkForBall()) {
-                holderThree.set(1, 1);
+                holderOne.set(1, 1);
             } else if (purpleTrue && checkForBall()) {
                 holderThree.set(1, 2);
             }
