@@ -71,6 +71,7 @@ public class PinpointDrive extends MecanumDrive {
 
     @Override
     public PoseVelocity2d updatePoseEstimate() {
+        super.updatePoseEstimate();
         if (lastPinpointPose != pose) {
             // RR localizer note:
             // Something else is modifying our pose (likely for relocalization),
