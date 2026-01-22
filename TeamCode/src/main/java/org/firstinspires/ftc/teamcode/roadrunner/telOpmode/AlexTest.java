@@ -32,11 +32,11 @@ public class AlexTest extends OpMode {
     Pose2d redTarget = new Pose2d(120, 56, 90);
     /// 0 is the intake slot, 1 is the first slot clockwise from the intake, 2 is after that, this ignores half steps eg. shooter is slot 1
     List<Integer> sorter = new ArrayList<>(Arrays.asList(0,0,0));
-    HuskyLens.Block[] blocks = huskyLens.blocks();
+    HuskyLens.Block[] blocks;
     double target_value, posX, posY, heading, distance, tangent, adjust;
     double tagID = 6, colorSortRelative;
     boolean sorterSafe, sorterThere, motorsSpooled, shooter;
-    double servoShootPos = 0.55, servoStayPos = 0.7, colorMove;
+    double servoShootPos = 0.55, servoStayPos = 0.7, colorMove, focalLength, distance1;
 
 
 
@@ -67,6 +67,8 @@ public class AlexTest extends OpMode {
         frontLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         backLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        launch1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        launch2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launch2.setDirection(DcMotorSimple.Direction.REVERSE);
 
 
@@ -79,15 +81,15 @@ public class AlexTest extends OpMode {
 
     @Override
     public void loop() {
+        blocks = huskyLens.blocks();
         drive.getPinpoint().update();
-        interfereCalc();
         peripherals();
-        sorterMove();
+        posMath();
+        colorSort();
 
         double vert = -gamepad1.left_stick_y; // forward/back
         double strafe = -gamepad1.left_stick_x;  // left/right
         double turn = -gamepad1.right_stick_x;   // rotation
-
 
         double fRightPower = (vert + turn + strafe);
         double fLeftPower = (vert - turn - strafe);
@@ -108,11 +110,13 @@ public class AlexTest extends OpMode {
         }
 
         if (gamepad2.right_trigger > 0.1) {
-            posMath();
-            shooter();
+            shooter(spinRateCalc());
+            sorterMove(90, false);
         }
 
         telemetry.addData("Tag", tagID);
+        telemetry.addData("FocalLength", focalLength);
+        telemetry.addData("Distance", distance1);
         telemetry.update();
     }
 
@@ -153,30 +157,32 @@ public class AlexTest extends OpMode {
         return spinRate;
     }
 
-    public void shooter() {
+    public void shooter(double shootSpeed) {
 
         /// Handles all shooter actions
 
         //Sets the speed to the spin rate and sets a marker
 
-        if (gamepad2.right_trigger > 0.1) {
-            launch1.setVelocity(spinRateCalc());
-            launch2.setVelocity(spinRateCalc());
-            shooter = true;
-        } else {
-            shooter = false;
+        if (launch1.getVelocity() < shootSpeed) {
+            launch1.setPower(1);
+            launch2.setPower(1);
+        } else if (launch1.getVelocity() >= shootSpeed){
+            launch1.setPower(0.8);
         }
 
+//            launch1.setVelocity(shootSpeed);
+//            launch2.setVelocity(shootSpeed);
+            shooter = true;
     }
 
-    public void interfereCalc () {
+    public boolean interfereCalc () {
 
         /// Calculates if it is safe to move the sorter
 
-        sorterSafe = launchServo.getPosition() <= 0.57 && locker.getPosition() >= 0.69;
+        return launchServo.getPosition() <= 0.57 && locker.getPosition() >= 0.69;
     }
 
-    public void sorterMove() {
+    public void sorterMove(double TargetValue, boolean ShooterSafeOverride) {
         /// Responsible for all sorter movement
 
         //Parabolic tuning is a beta feature and currently not implemented
@@ -189,10 +195,12 @@ public class AlexTest extends OpMode {
 
         sorterErr = 7;
 
-        if (target_value > sorterMotor.getCurrentPosition() + sorterErr && sorterSafe) {
+        target_value += TargetValue;
+
+        if (target_value > sorterMotor.getCurrentPosition() + sorterErr && sorterSafe || ShooterSafeOverride) {
             sorterMotor.setPower(0.3);
             sorterThere = false;
-        } else if (target_value < sorterMotor.getCurrentPosition() - sorterErr && sorterSafe) {
+        } else if (target_value < sorterMotor.getCurrentPosition() - sorterErr && sorterSafe || ShooterSafeOverride) {
             sorterMotor.setPower(-0.3);
             sorterThere = false;
         } else {
@@ -205,18 +213,32 @@ public class AlexTest extends OpMode {
 
         /// Sorts all colors and organizes them into slots
 
-        double currball;
+        double currball, width;
 
         //Assigns the id which the lens sees to a variable which will stay static
 
-        for (HuskyLens.Block block : blocks) {
-            if (block.id == 1) {
+        for (int i = 0; i < blocks.length; i++) {
+            if (blocks[i].id == 1) {
                 tagID = 1;
-            } if (block.id == 2) {
+            } if (blocks[i].id == 2) {
                 tagID = 2;
-            } if (block.id == 4) {
+            } if (blocks[i].id == 4) {
                 tagID = 3;
             }
+
+//            if (blocks[i].width == 0) {
+//                width = 0;
+//            } else {
+//                width = blocks[i].width;
+//            }
+
+            width = blocks[i].width;
+
+            focalLength = (width * 609.6) / 162;
+
+            distance1 = (301 * width / 162);
+
+            //301
         }
 
         //Calculates color of the ball in the intake

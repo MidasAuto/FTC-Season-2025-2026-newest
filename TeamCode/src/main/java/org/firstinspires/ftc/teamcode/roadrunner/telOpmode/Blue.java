@@ -240,15 +240,7 @@ public class Blue extends OpMode {
         } else if (gamepad1.dpad_down) {
             spinRate -= 2;
         }
-
         telemetry();
-        telemetry.update();
-        leftBumperPreveous = leftBumperCurrent;
-        rightBumberPreveous = rightBumperCurrent;
-        light();
-        checkPos();
-        telemetry.addData("LoopTime", loopTimer);
-        telemetry.update();
     }
 
     //----------------------
@@ -265,18 +257,11 @@ public class Blue extends OpMode {
     //----------------------
 
     public void telemetry() {
-        /*telemetry.addData("Red: ", redValue);
-        telemetry.addData("Green: ", greenValue);
-        telemetry.addData("Blue: ", blueValue);
-        telemetry.addData("CheckForBall", checkForBall());
-        telemetry.addData("holderOne value: ", holderOne.get(1));
-        telemetry.addData("holderTwo value: ", holderTwo.get(1));
-        telemetry.addData("Should Shoot: ", shoot);*/
         telemetry.addData("Shoot Velocity: ", launch2.getVelocity(AngleUnit.DEGREES));
         telemetry.addData("Distance", testPos());
         telemetry.addData("SpinRate", spinRate);
-        telemetry.addData("x", drive.getPinpoint().getPosX());
-        telemetry.addData("y", drive.getPinpoint().getPosY());
+        telemetry.addData("x", drive.getPinpoint().getPositionRR().position.x);
+        telemetry.addData("y", drive.getPinpoint().getPositionRR().position.y);
         telemetry.addData("Heading", Math.toDegrees(drive.pinpoint.getHeading()));
 
         telemetry.update();
